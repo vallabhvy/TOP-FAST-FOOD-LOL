@@ -15,6 +15,9 @@ import { sound } from "@/lib/sound";
 import { validateContent } from "@/lib/moderation";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
+const ALLOWED_AMOUNTS = [1, 2, 5, 10];
+const ORDER_COOLDOWN_MS = 3000; // 3 second cooldown between orders
+
 export default function Home() {
   const [theme, setTheme] = useState<CRTColorTheme>("green");
   const [brands, setBrands] = useState<FastFoodBrand[]>(INITIAL_BRANDS);
@@ -45,6 +48,9 @@ export default function Home() {
   const [newChainXHandle, setNewChainXHandle] = useState("");
   const [newChainError, setNewChainError] = useState<string | null>(null);
 
+  // Rate limiting state
+  const [lastOrderTime, setLastOrderTime] = useState<number>(0);
+
   // Sync with Supabase on mount & subscribe to Realtime if configured
   useEffect(() => {
     const client = supabase;
@@ -68,6 +74,7 @@ export default function Home() {
             updatedAt: "Live",
             clicks: row.clicks || 0,
             accentColor: row.accent_color || "#f59e0b",
+            status: row.status || "approved",
           })),
         );
       }
@@ -155,20 +162,11 @@ export default function Home() {
     setIsOrderOpen(true);
   };
 
-  const handleBrandClick = async (brandId: string) => {
+  const handleBrandClick = (brandId: string) => {
     setBrands((prev) =>
       prev.map((b) => (b.id === brandId ? { ...b, clicks: b.clicks + 1 } : b)),
     );
-
-    if (isSupabaseConfigured && supabase) {
-      const b = brands.find((x) => x.id === brandId);
-      if (b) {
-        await supabase
-          .from("brands")
-          .update({ clicks: b.clicks + 1 })
-          .eq("id", brandId);
-      }
-    }
+    // Click counter is local-only; actual engagement is tracked via orders
   };
 
   const handleOrderSubmit = async (params: {
@@ -179,6 +177,30 @@ export default function Home() {
     author: string;
     location?: string;
   }) => {
+    // Rate limiting
+    const now = Date.now();
+    if (now - lastOrderTime < ORDER_COOLDOWN_MS) {
+      return;
+    }
+    setLastOrderTime(now);
+
+    // Validate amount is in allowed set
+    if (!ALLOWED_AMOUNTS.includes(params.amount)) {
+      return;
+    }
+
+    // Server-side moderation gate (defense in depth)
+    const msgValidation = validateContent(params.message, "message");
+    if (!msgValidation.isValid) return;
+
+    const authorValidation = validateContent(params.author, "author");
+    if (!authorValidation.isValid) return;
+
+    if (params.location) {
+      const locValidation = validateContent(params.location, "location");
+      if (!locValidation.isValid) return;
+    }
+
     const previousLeader = sortedBrands[0];
 
     let newCalculatedRank = 1;
@@ -231,9 +253,9 @@ export default function Home() {
     });
 
     const targetBrand = brands.find((b) => b.id === params.brandId);
-    const receiptNumber = `ORD-${Math.floor(1000 + Math.random() * 9000)}`;
+    const receiptNumber = `ORD-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
     const newTx: Transaction = {
-      id: `tx-${Date.now()}`,
+      id: `tx-${crypto.randomUUID()}`,
       brandId: params.brandId,
       brandName: targetBrand?.name || "Unknown Brand",
       actionType: params.actionType,
@@ -252,48 +274,45 @@ export default function Home() {
     setLastRank(newCalculatedRank);
     setIsReceiptOpen(true);
 
-    // Persist to Supabase if keys exist
-    if (isSupabaseConfigured && supabase && targetBrand) {
-      const newScore =
-        params.actionType === "BOOST"
-          ? targetBrand.totalScore + params.amount
-          : targetBrand.totalScore - params.amount;
-
-      await supabase
-        .from("brands")
-        .update({
-          total_score: newScore,
-          total_boosts:
-            params.actionType === "BOOST"
-              ? targetBrand.totalBoosts + params.amount
-              : targetBrand.totalBoosts,
-          total_sabotages:
-            params.actionType === "SABOTAGE"
-              ? targetBrand.totalSabotages + params.amount
-              : targetBrand.totalSabotages,
-          current_slogan: params.message,
-          slogan_author: params.author,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", params.brandId);
-
-      await supabase.from("transactions").insert({
-        brand_id: params.brandId,
-        brand_name: targetBrand.name,
-        action_type: params.actionType,
-        amount: params.amount,
-        message: params.message,
-        author: params.author,
-        receipt_number: receiptNumber,
+    // Persist via server-side API route (validates & writes with service role)
+    try {
+      await fetch("/api/order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          brandId: params.brandId,
+          actionType: params.actionType,
+          amount: params.amount,
+          message: params.message,
+          author: params.author,
+          location: params.location,
+        }),
       });
+    } catch {
+      // Local state already updated — Supabase realtime will reconcile
     }
   };
 
   const handleAddNewChain = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Rate limiting
+    const now = Date.now();
+    if (now - lastOrderTime < ORDER_COOLDOWN_MS) {
+      setNewChainError("Please wait a few seconds before submitting again.");
+      return;
+    }
+    setLastOrderTime(now);
+
     const cleanX = newChainXHandle.trim().replace(/^@/, "");
     const cleanNick = newChainNickname.trim();
     if (!newChainName.trim() || (!cleanX && !cleanNick)) return;
+
+    // Validate amount is in allowed set
+    if (!ALLOWED_AMOUNTS.includes(newChainAmount)) {
+      setNewChainError("Invalid amount selected.");
+      return;
+    }
 
     const finalizedAuthor = cleanX ? `@${cleanX}` : cleanNick;
 
@@ -335,7 +354,18 @@ export default function Home() {
       sound.playSabotageBuzzer();
     }
 
-    const id = newChainName.toLowerCase().replace(/[^a-z0-9]/g, "-");
+    const baseId = newChainName.toLowerCase().replace(/[^a-z0-9]/g, "-");
+    const id = `${baseId}-${crypto.randomUUID().slice(0, 6)}`;
+
+    // Duplicate brand detection
+    const existingBrand = brands.find(
+      (b) => b.name.toLowerCase().trim() === newChainName.trim().toLowerCase()
+    );
+    if (existingBrand) {
+      setNewChainError(`"${existingBrand.name}" is already on the board! Search and boost/sabotage it instead.`);
+      sound.playSabotageBuzzer();
+      return;
+    }
     const initialScore =
       newChainAction === "BOOST" ? newChainAmount : -newChainAmount;
 
@@ -362,9 +392,9 @@ export default function Home() {
     setNewChainAmount(2);
     setNewChainAction("BOOST");
 
-    const receiptNumber = `ORD-${Math.floor(1000 + Math.random() * 9000)}`;
+    const receiptNumber = `ORD-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
     const newTx: Transaction = {
-      id: `tx-${Date.now()}`,
+      id: `tx-${crypto.randomUUID()}`,
       brandId: id,
       brandName: newBrand.name,
       actionType: newChainAction,
@@ -379,29 +409,22 @@ export default function Home() {
     setLastRank(brands.length + 1);
     setIsReceiptOpen(true);
 
-    if (isSupabaseConfigured && supabase) {
-      await supabase.from("brands").insert({
-        id,
-        name: newBrand.name,
-        category: newBrand.category,
-        total_score: initialScore,
-        total_boosts: newBrand.totalBoosts,
-        total_sabotages: newBrand.totalSabotages,
-        current_slogan: newBrand.currentSlogan,
-        slogan_author: newBrand.sloganAuthor,
-        clicks: 1,
-        accent_color: newBrand.accentColor,
+    // Persist via server-side API route
+    try {
+      await fetch("/api/add-chain", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newBrand.name,
+          actionType: newChainAction,
+          amount: newChainAmount,
+          message: newBrand.currentSlogan,
+          author: newBrand.sloganAuthor,
+          accentColor: newBrand.accentColor,
+        }),
       });
-
-      await supabase.from("transactions").insert({
-        brand_id: id,
-        brand_name: newBrand.name,
-        action_type: newChainAction,
-        amount: newChainAmount,
-        message: newBrand.currentSlogan,
-        author: newBrand.sloganAuthor,
-        receipt_number: receiptNumber,
-      });
+    } catch {
+      // Local state already updated — realtime will reconcile
     }
   };
 
