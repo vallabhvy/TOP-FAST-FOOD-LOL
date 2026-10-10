@@ -24,6 +24,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     }
 
+    if (!supabase) {
+      return NextResponse.json({ error: "Supabase not configured" }, { status: 500 });
+    }
+
     // 3. Call Secure RPC Function
     const { data, error } = await supabase.rpc("vote_transaction", {
       p_transaction_id: transactionId,

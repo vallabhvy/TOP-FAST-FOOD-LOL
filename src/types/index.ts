@@ -2,7 +2,7 @@ export interface FastFoodBrand {
   id: string;
   name: string;
   alias?: string;
-  category: "Burgers" | "Chicken" | "Mexican" | "Sandwiches" | "Late Night";
+  category: string;
   totalScore: number;
   totalBoosts: number;
   totalSabotages: number;
