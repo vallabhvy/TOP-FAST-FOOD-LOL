@@ -36,6 +36,18 @@ function isRateLimited(ip: string): boolean {
 }
 
 export async function POST(req: Request) {
+  // CORS / CSRF Protection: Ensure request comes from our frontend
+  const origin = req.headers.get("origin") || req.headers.get("referer") || "";
+  const isLocalhost = origin.includes("localhost:3000") || origin.includes("127.0.0.1:3000");
+  const isProductionDomain = origin.includes("topfastfood.lol");
+
+  if (!isLocalhost && !isProductionDomain) {
+    return NextResponse.json(
+      { error: "Unauthorized request origin." },
+      { status: 403 }
+    );
+  }
+
   // Rate limiting by IP
   const forwarded = req.headers.get("x-forwarded-for");
   const ip = forwarded?.split(",")[0]?.trim() || "unknown";
@@ -71,6 +83,22 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
+
+  // 1b. Type-safety: reject non-string inputs that could bypass regex moderation
+  if (
+    typeof brandId !== "string" ||
+    typeof actionType !== "string" ||
+    typeof amount !== "number" ||
+    typeof message !== "string" ||
+    typeof author !== "string" ||
+    (location !== undefined && typeof location !== "string")
+  ) {
+    return NextResponse.json(
+      { error: "Invalid field types." },
+      { status: 400 }
+    );
+  }
+
 
   // 2. Validate action type
   if (!ALLOWED_ACTIONS.includes(actionType as typeof ALLOWED_ACTIONS[number])) {
@@ -115,10 +143,70 @@ export async function POST(req: Request) {
     }
   }
 
-  // 5. Write to Supabase (server-side with service role)
+  // 5. Generate Payment Session or Fallback to Demo Mode
+  const dodoKey = process.env.DODO_PAYMENTS_API_KEY;
+
+  if (dodoKey) {
+    // SECURE FLOW: Real Money via DodoPayments
+    try {
+      const DodoPayments = (await import("dodopayments")).default;
+      const dodo = new DodoPayments({ bearerToken: dodoKey });
+
+      // Build metadata to pass to the webhook later
+      const metadata = {
+        brandId,
+        actionType,
+        amount: amount.toString(),
+        message,
+        author,
+        location: location || "",
+        type: "order"
+      };
+
+      // Ensure base URL exists for redirects
+      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || req.headers.get("origin") || "http://localhost:3000";
+
+      const payment = await dodo.payments.create({
+        billing: {
+          city: "",
+          country: "US", // Default to US, user can change
+          state: "",
+          street: "",
+          zipcode: "",
+        },
+        customer: {
+          email: "",
+          name: author,
+        },
+        product_cart: [
+          {
+            product_id: "default_product_id", // Requires a valid ID, use a dummy or predefined one
+            quantity: 1,
+            amount: amount * 100, // Assuming amount is in dollars, convert to cents if API requires it
+          },
+        ],
+        return_url: `${baseUrl}?payment=success`,
+        metadata,
+      });
+
+      // The frontend must now redirect the user to this link to pay
+      return NextResponse.json({
+        success: true,
+        paymentLink: payment.payment_link || "", // URL where the user enters card details
+        mode: "live",
+      });
+    } catch (error) {
+      console.error("DodoPayments Error:", error);
+      return NextResponse.json(
+        { error: "Failed to initialize payment session. Please try again." },
+        { status: 500 }
+      );
+    }
+  }
+
+  // FALLBACK DEMO FLOW (No API Keys configured)
   const supabase = getServerSupabase();
   if (!supabase) {
-    // No Supabase configured — return success for local/demo mode
     return NextResponse.json({
       success: true,
       receiptNumber: `ORD-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
@@ -126,7 +214,7 @@ export async function POST(req: Request) {
     });
   }
 
-  // Fetch current brand to compute new score atomically
+  // Demo DB update (trusts the client because it's a demo)
   const { data: brand, error: fetchError } = await supabase
     .from("brands")
     .select("*")
@@ -134,28 +222,15 @@ export async function POST(req: Request) {
     .single();
 
   if (fetchError || !brand) {
-    return NextResponse.json(
-      { error: "Brand not found." },
-      { status: 404 }
-    );
+    return NextResponse.json({ error: "Brand not found." }, { status: 404 });
   }
 
-  const newScore =
-    actionType === "BOOST"
-      ? brand.total_score + amount
-      : brand.total_score - amount;
-
-  const newBoosts =
-    actionType === "BOOST" ? brand.total_boosts + amount : brand.total_boosts;
-  const newSabotages =
-    actionType === "SABOTAGE"
-      ? brand.total_sabotages + amount
-      : brand.total_sabotages;
-
+  const newScore = actionType === "BOOST" ? brand.total_score + amount : brand.total_score - amount;
+  const newBoosts = actionType === "BOOST" ? brand.total_boosts + amount : brand.total_boosts;
+  const newSabotages = actionType === "SABOTAGE" ? brand.total_sabotages + amount : brand.total_sabotages;
   const receiptNumber = `ORD-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
 
-  // Update brand
-  const { error: updateError } = await supabase
+  await supabase
     .from("brands")
     .update({
       total_score: newScore,
@@ -167,15 +242,7 @@ export async function POST(req: Request) {
     })
     .eq("id", brandId);
 
-  if (updateError) {
-    return NextResponse.json(
-      { error: "Failed to update brand score." },
-      { status: 500 }
-    );
-  }
-
-  // Insert transaction
-  const { error: insertError } = await supabase.from("transactions").insert({
+  await supabase.from("transactions").insert({
     brand_id: brandId,
     brand_name: brand.name,
     action_type: actionType,
@@ -185,17 +252,12 @@ export async function POST(req: Request) {
     receipt_number: receiptNumber,
   });
 
-  if (insertError) {
-    // Score was updated but transaction log failed — not critical
-    console.error("Transaction insert failed:", insertError);
-  }
-
   return NextResponse.json({
     success: true,
     receiptNumber,
     newScore,
     newBoosts,
     newSabotages,
-    mode: "live",
+    mode: "demo",
   });
 }

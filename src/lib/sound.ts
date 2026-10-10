@@ -20,6 +20,9 @@ class SoundFX {
 
   public setMuted(muted: boolean) {
     this.isMuted = muted;
+    if (this.bgmAudio) {
+      this.bgmAudio.muted = muted;
+    }
   }
 
   public getMuted(): boolean {
@@ -116,6 +119,39 @@ class SoundFX {
     osc.start(now);
     osc.stop(now + 0.05);
   }
+
+  private bgmAudio: HTMLAudioElement | null = null;
+
+  public startMusic() {
+    if (typeof window === "undefined") return;
+    if (!this.bgmAudio) {
+      this.bgmAudio = new Audio("/bgm.mp3");
+      this.bgmAudio.loop = true;
+      this.bgmAudio.volume = 0.05; // 5% volume
+    }
+    
+    this.bgmAudio.muted = this.isMuted;
+    this.bgmAudio.play().catch((e) => {
+      console.log("Audio playback waiting for interaction");
+    });
+  }
+
+  public stopMusic() {
+    if (this.bgmAudio) {
+      this.bgmAudio.pause();
+    }
+  }
 }
 
 export const sound = new SoundFX();
+
+if (typeof window !== "undefined") {
+  sound.startMusic();
+  const resumeAudio = () => {
+    sound.startMusic();
+    window.removeEventListener("click", resumeAudio);
+    window.removeEventListener("keydown", resumeAudio);
+  };
+  window.addEventListener("click", resumeAudio);
+  window.addEventListener("keydown", resumeAudio);
+}

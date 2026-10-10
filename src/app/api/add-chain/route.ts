@@ -34,6 +34,18 @@ function isRateLimited(ip: string): boolean {
 }
 
 export async function POST(req: Request) {
+  // CORS / CSRF Protection: Ensure request comes from our frontend
+  const origin = req.headers.get("origin") || req.headers.get("referer") || "";
+  const isLocalhost = origin.includes("localhost:3000") || origin.includes("127.0.0.1:3000");
+  const isProductionDomain = origin.includes("topfastfood.lol");
+
+  if (!isLocalhost && !isProductionDomain) {
+    return NextResponse.json(
+      { error: "Unauthorized request origin." },
+      { status: 403 }
+    );
+  }
+
   // Rate limiting
   const forwarded = req.headers.get("x-forwarded-for");
   const ip = forwarded?.split(",")[0]?.trim() || "unknown";
@@ -68,6 +80,22 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
+
+  // 1b. Type-safety: reject non-string inputs that could bypass regex moderation
+  if (
+    typeof name !== "string" ||
+    typeof actionType !== "string" ||
+    typeof amount !== "number" ||
+    typeof message !== "string" ||
+    typeof author !== "string" ||
+    (accentColor !== undefined && typeof accentColor !== "string")
+  ) {
+    return NextResponse.json(
+      { error: "Invalid field types." },
+      { status: 400 }
+    );
+  }
+
 
   // 2. Validate action type
   if (!ALLOWED_ACTIONS.includes(actionType as typeof ALLOWED_ACTIONS[number])) {
@@ -104,14 +132,74 @@ export async function POST(req: Request) {
     );
   }
 
-  const supabase = getServerSupabase();
+  // 5. Generate Payment Session or Fallback to Demo Mode
+  const dodoKey = process.env.DODO_PAYMENTS_API_KEY;
   const baseId = name.toLowerCase().replace(/[^a-z0-9]/g, "-");
   const id = `${baseId}-${crypto.randomUUID().slice(0, 6)}`;
   const initialScore = actionType === "BOOST" ? amount : -amount;
   const receiptNumber = `ORD-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
 
+  const supabase = getServerSupabase();
+
+  if (dodoKey) {
+    // SECURE FLOW: Real Money via DodoPayments
+    try {
+      const DodoPayments = (await import("dodopayments")).default;
+      const dodo = new DodoPayments({ bearerToken: dodoKey });
+
+      // Build metadata to pass to the webhook later
+      const metadata = {
+        brandId: id,
+        name: name.trim(),
+        actionType,
+        amount: amount.toString(),
+        message,
+        author,
+        accentColor: accentColor || "#f59e0b",
+        type: "add_chain"
+      };
+
+      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || req.headers.get("origin") || "http://localhost:3000";
+
+      const payment = await dodo.payments.create({
+        billing: {
+          city: "",
+          country: "US",
+          state: "",
+          street: "",
+          zipcode: "",
+        },
+        customer: {
+          email: "",
+          name: author,
+        },
+        product_cart: [
+          {
+            product_id: "default_product_id",
+            quantity: 1,
+            amount: amount * 100,
+          },
+        ],
+        return_url: `${baseUrl}?payment=success`,
+        metadata,
+      });
+
+      return NextResponse.json({
+        success: true,
+        paymentLink: payment.payment_link || "",
+        mode: "live",
+      });
+    } catch (error) {
+      console.error("DodoPayments Error:", error);
+      return NextResponse.json(
+        { error: "Failed to initialize payment session. Please try again." },
+        { status: 500 }
+      );
+    }
+  }
+
+  // FALLBACK DEMO FLOW (No API Keys configured)
   if (!supabase) {
-    // No Supabase — demo/local mode
     return NextResponse.json({
       success: true,
       id,
@@ -170,6 +258,6 @@ export async function POST(req: Request) {
     success: true,
     id,
     receiptNumber,
-    mode: "live",
+    mode: "demo",
   });
 }

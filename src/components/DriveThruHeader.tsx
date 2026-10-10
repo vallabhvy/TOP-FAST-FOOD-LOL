@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Volume2, VolumeX, Flame, Skull } from "lucide-react";
 import { CRTColorTheme, Transaction } from "@/types";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { sound } from "@/lib/sound";
 
 interface HeaderProps {
@@ -18,6 +19,20 @@ export const DriveThruHeader: React.FC<HeaderProps> = ({
 }) => {
   const [isMuted, setIsMuted] = useState(false);
   const [activeTxIndex, setActiveTxIndex] = useState(0);
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    if (isSupabaseConfigured && supabase) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setUser(session?.user || null);
+      });
+      
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        setUser(session?.user || null);
+      });
+      return () => subscription.unsubscribe();
+    }
+  }, []);
 
   useEffect(() => {
     if (recentTransactions.length <= 1) return;
@@ -34,6 +49,23 @@ export const DriveThruHeader: React.FC<HeaderProps> = ({
     if (!nextMuted) {
       sound.playDriveThruChime();
     }
+  };
+
+  const handleTwitterLogin = async () => {
+    sound.playClick();
+    if (!supabase) return;
+    await supabase.auth.signInWithOAuth({
+      provider: "twitter",
+      options: {
+        redirectTo: window.location.origin,
+      },
+    });
+  };
+
+  const handleLogout = async () => {
+    sound.playClick();
+    if (!supabase) return;
+    await supabase.auth.signOut();
   };
 
   const isGreen = theme === "green";
@@ -71,6 +103,25 @@ export const DriveThruHeader: React.FC<HeaderProps> = ({
                 <Volume2 className="w-5 h-5 text-emerald-400" />
               )}
             </button>
+            
+            {/* Login / User Info Button */}
+            {user ? (
+              <button
+                onClick={handleLogout}
+                title="Sign out"
+                className="p-1.5 sm:p-2 rounded border border-sky-900/50 bg-sky-950/30 text-sky-400 hover:text-white hover:bg-rose-950/30 hover:border-rose-900/50 transition-all cursor-pointer flex items-center justify-center text-xs font-mono font-bold"
+              >
+                @{user.user_metadata?.user_name || "user"}
+              </button>
+            ) : (
+              <button
+                onClick={handleTwitterLogin}
+                className="p-1.5 sm:p-2 rounded border border-zinc-800 bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 hover:text-sky-400 transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs font-mono group"
+              >
+                <svg className="w-3.5 h-3.5 fill-current group-hover:text-sky-400 text-zinc-500" viewBox="0 0 24 24"><path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/></svg>
+                LOGIN
+              </button>
+            )}
           </div>
           <p className="text-xs sm:text-sm text-zinc-400 mt-1.5 font-mono max-w-2xl">
             <span className="text-[#39ff14] font-bold">+$1 to Boost</span> a

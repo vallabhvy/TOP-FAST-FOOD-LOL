@@ -32,6 +32,17 @@ export interface Transaction {
   receiptNumber: string;
   replyToAuthor?: string;
   status?: "approved" | "hidden";
+  likes?: number;
+  dislikes?: number;
+}
+
+export interface Reply {
+  id: string;
+  transactionId: string;
+  authorHandle: string;
+  authorAvatar?: string;
+  message: string;
+  createdAt: string;
 }
 
 export type CRTColorTheme = "green" | "amber";

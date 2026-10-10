@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
-import { Flame, Skull, Crown, MessageSquare, ChevronDown, ChevronUp } from "lucide-react";
+import { Flame, Skull, Crown, MessageSquare, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown } from "lucide-react";
 import { FastFoodBrand, ActionType, Transaction, CRTColorTheme } from "@/types";
 import { sound } from "@/lib/sound";
 import { UserAvatar } from "@/components/UserAvatar";
+import Link from "next/link";
 
 interface BrandCardProps {
   brand: FastFoodBrand;
@@ -187,120 +188,29 @@ export const BrandCard: React.FC<BrandCardProps> = ({
       </div>
 
       {/* View / Unview Comments Toggle Bar */}
-      <div className="px-3.5 sm:px-5 py-2 border-t border-zinc-900 bg-black/40 flex items-center justify-between text-xs font-mono">
-        <button
-          onClick={() => {
-            sound.playClick();
-            setShowComments(!showComments);
-          }}
-          className="flex items-center gap-1.5 text-zinc-400 hover:text-white transition-colors cursor-pointer group/btn"
-        >
-          <MessageSquare className="w-3.5 h-3.5 text-zinc-500 group-hover/btn:text-amber-400 transition-colors" />
-          <span className="font-bold">
-            {showComments ? "Hide Comments" : `View Comments (${comments.length})`}
-          </span>
-          <span className="text-zinc-500 group-hover/btn:text-zinc-300 flex items-center">
-            {showComments ? (
-              <ChevronUp className="w-3.5 h-3.5" />
-            ) : (
-              <ChevronDown className="w-3.5 h-3.5" />
-            )}
-          </span>
-        </button>
+      <Link href={`/chain/${brand.id}`} onClick={() => sound.playClick()}>
+        <div className="px-3.5 sm:px-5 py-2 border-t border-zinc-900 bg-black/40 hover:bg-zinc-900/50 transition-colors flex items-center justify-between text-xs font-mono cursor-pointer group">
+          <div className="flex items-center gap-1.5 text-zinc-400 group-hover:text-white transition-colors">
+            <MessageSquare className="w-3.5 h-3.5 text-zinc-500 group-hover:text-amber-400 transition-colors" />
+            <span className="font-bold">
+              View Threaded Comments ({comments.length})
+            </span>
+            <span className="text-zinc-500 group-hover:text-zinc-300 ml-1">
+              &rarr;
+            </span>
+          </div>
 
-        <div className="flex items-center gap-2 text-[10px] text-zinc-500 font-mono">
-          <span className="text-emerald-400/90 font-bold">
-            +{brand.totalBoosts}
-          </span>
-          <span>/</span>
-          <span className="text-rose-400/90 font-bold">
-            -{brand.totalSabotages}
-          </span>
+          <div className="flex items-center gap-2 text-[10px] text-zinc-500 font-mono">
+            <span className="text-emerald-400/90 font-bold">
+              +{brand.totalBoosts}
+            </span>
+            <span>/</span>
+            <span className="text-rose-400/90 font-bold">
+              -{brand.totalSabotages}
+            </span>
+          </div>
         </div>
-      </div>
-
-      {/* Comments List (When Expanded / Visible) */}
-      {showComments && (
-        <div className="border-t border-zinc-900 bg-black/60 p-3 sm:p-4 space-y-2">
-          {comments.length > 0 ? (
-            <div className="space-y-1.5 font-mono text-xs">
-              {comments.map((tx) => (
-                <div
-                  key={tx.id}
-                  className="bg-zinc-900/60 border border-zinc-800/70 rounded p-2 sm:p-2.5 flex flex-col gap-1"
-                >
-                  <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {/* Author Avatar + Handle */}
-                      {tx.author.startsWith("@") &&
-                      tx.author !== "@anon_driver" ? (
-                        <a
-                          href={`https://x.com/${tx.author.replace(/^@/, "")}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-zinc-200 hover:text-sky-400 font-bold flex items-center gap-1 hover:underline text-xs"
-                        >
-                          <UserAvatar handle={tx.author} size="xs" />
-                          <span>{tx.author}</span>
-                        </a>
-                      ) : (
-                        <span className="text-zinc-300 font-bold text-xs">
-                          {tx.author}
-                        </span>
-                      )}
-
-                      {/* Action Type Badge */}
-                      {tx.actionType === "BOOST" ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-emerald-950/70 text-emerald-400 border border-emerald-800/60 font-bold">
-                          <Flame className="w-2.5 h-2.5 fill-current" />
-                          +${tx.amount} BOOST
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-rose-950/70 text-rose-400 border border-rose-800/60 font-bold">
-                          <Skull className="w-2.5 h-2.5" />
-                          -${tx.amount} SABOTAGE
-                        </span>
-                      )}
-
-                      {/* Location Origin Tag */}
-                      {tx.location && (
-                        <span className="text-[10px] text-zinc-500 font-mono">
-                          [{tx.location}]
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-2 text-[10px] text-zinc-500 font-mono">
-                      <span>{tx.timestamp}</span>
-
-                      {/* Thermal Receipt Button */}
-                      <button
-                        onClick={() => {
-                          sound.playCashRegister();
-                          onReceiptClick?.(tx);
-                        }}
-                        className="hover:text-amber-400 hover:underline flex items-center gap-1 text-zinc-400 cursor-pointer"
-                        title="View drive-thru thermal receipt"
-                      >
-                        <span>{tx.receiptNumber}</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Roast Message Body */}
-                  <p className="text-zinc-200 text-xs pl-0.5 break-words">
-                    &quot;{tx.message}&quot;
-                  </p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-zinc-500 text-xs font-mono py-2 text-center">
-              No comments yet for {brand.name}.
-            </p>
-          )}
-        </div>
-      )}
+      </Link>
     </div>
   );
 };

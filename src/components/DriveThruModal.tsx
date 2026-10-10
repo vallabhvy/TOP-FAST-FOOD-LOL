@@ -14,6 +14,7 @@ import { FastFoodBrand, ActionType, CRTColorTheme } from "@/types";
 import { sound } from "@/lib/sound";
 import { UserAvatar } from "@/components/UserAvatar";
 import { validateContent } from "@/lib/moderation";
+import { supabase } from "@/lib/supabase";
 
 interface DriveThruModalProps {
   brand: FastFoodBrand | null;
@@ -28,7 +29,7 @@ interface DriveThruModalProps {
     message: string;
     author: string;
     location?: string;
-  }) => void;
+  }) => Promise<string | undefined> | void;
   theme: CRTColorTheme;
 }
 
@@ -58,6 +59,28 @@ export const DriveThruModal: React.FC<DriveThruModalProps> = ({
   const [location, setLocation] = useState<string>("Austin, TX 🤠");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [moderationError, setModerationError] = useState<string | null>(null);
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    if (supabase) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setUser(session?.user || null);
+        if (session?.user) {
+          setXHandle(`@${session.user.user_metadata?.user_name || "user"}`);
+        }
+      });
+      
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        setUser(session?.user || null);
+        if (session?.user) {
+          setXHandle(`@${session.user.user_metadata?.user_name || "user"}`);
+        } else {
+          setXHandle("");
+        }
+      });
+      return () => subscription.unsubscribe();
+    }
+  }, []);
 
   useEffect(() => {
     fetch("/api/geo")
@@ -136,10 +159,9 @@ export const DriveThruModal: React.FC<DriveThruModalProps> = ({
     setIsSubmitting(true);
     sound.playClick();
 
-    // Instant local transaction (Dodo Payments to be integrated)
-    sound.playCashRegister();
-    setTimeout(() => {
-      onSubmit({
+    // Await server submission/validation
+    try {
+      const errorMsg = await onSubmit({
         brandId: brand.id,
         actionType,
         amount,
@@ -147,11 +169,22 @@ export const DriveThruModal: React.FC<DriveThruModalProps> = ({
         author: finalizedAuthor,
         location: location.trim() || undefined,
       });
-      setIsSubmitting(false);
+
+      if (errorMsg) {
+        setModerationError(errorMsg);
+        setIsSubmitting(false);
+        sound.playSabotageBuzzer();
+        return;
+      }
+
+      // Success! Play cash register and clear state
+      sound.playCashRegister();
       setMessage("");
       setNickname("");
       setXHandle("");
-    }, 400);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -290,28 +323,39 @@ export const DriveThruModal: React.FC<DriveThruModalProps> = ({
                 placeholder="Name / Nickname"
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
-                className="w-full bg-zinc-950 border border-zinc-800 rounded px-2.5 py-1.5 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500 font-mono"
+                disabled={!!xHandle.trim()}
+                className="w-full bg-zinc-950 border border-zinc-800 rounded px-2.5 py-1.5 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500 font-mono disabled:opacity-50"
               />
 
               <div className="relative">
-                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500 font-bold text-xs select-none">
-                  @
-                </span>
-                <input
-                  type="text"
-                  maxLength={25}
-                  required={!nickname.trim()}
-                  placeholder="X_handle"
-                  value={xHandle.replace(/^@/, "")}
-                  onChange={(e) =>
-                    setXHandle(e.target.value.replace(/[^a-zA-Z0-9_]/g, ""))
-                  }
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded pl-6 pr-8 py-1.5 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500 font-mono"
-                />
-                {xHandle.trim() && (
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center">
-                    <UserAvatar handle={xHandle} size="xs" />
+                {user ? (
+                  <div className="w-full bg-sky-950/30 border border-sky-900/50 rounded pl-6 pr-8 py-1.5 text-xs text-sky-400 font-mono flex items-center justify-between">
+                    <div className="flex items-center gap-1 overflow-hidden">
+                      <span className="text-sky-500 font-bold select-none">@</span>
+                      <span className="truncate">{xHandle.replace(/^@/, "")}</span>
+                    </div>
+                    {xHandle.trim() && (
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center">
+                        <UserAvatar handle={xHandle} size="xs" />
+                      </div>
+                    )}
                   </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      sound.playClick();
+                      if (!supabase) return;
+                      await supabase.auth.signInWithOAuth({
+                        provider: "twitter",
+                        options: { redirectTo: window.location.origin },
+                      });
+                    }}
+                    className="w-full bg-zinc-950 hover:bg-sky-950/20 border border-zinc-800 hover:border-sky-500/50 rounded py-1.5 text-[10px] sm:text-xs text-zinc-400 hover:text-sky-400 font-mono flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24"><path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/></svg>
+                    LOGIN TO USE X
+                  </button>
                 )}
               </div>
             </div>

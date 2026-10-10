@@ -17,6 +17,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 const ALLOWED_AMOUNTS = [1, 2, 5, 10];
 const ORDER_COOLDOWN_MS = 3000; // 3 second cooldown between orders
+const ITEMS_PER_PAGE = 10;
 
 export default function Home() {
   const [theme, setTheme] = useState<CRTColorTheme>("green");
@@ -24,6 +25,12 @@ export default function Home() {
   const [transactions, setTransactions] =
     useState<Transaction[]>(INITIAL_TRANSACTIONS);
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset pagination when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   // Modal State
   const [isOrderOpen, setIsOrderOpen] = useState(false);
@@ -37,16 +44,6 @@ export default function Home() {
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [activeReceipt, setActiveReceipt] = useState<Transaction | null>(null);
   const [lastRank, setLastRank] = useState<number>(1);
-
-  // New Brand Modal State
-  const [isAddChainOpen, setIsAddChainOpen] = useState(false);
-  const [newChainName, setNewChainName] = useState("");
-  const [newChainAction, setNewChainAction] = useState<ActionType>("BOOST");
-  const [newChainAmount, setNewChainAmount] = useState<number>(2);
-  const [newChainSlogan, setNewChainSlogan] = useState("");
-  const [newChainNickname, setNewChainNickname] = useState("");
-  const [newChainXHandle, setNewChainXHandle] = useState("");
-  const [newChainError, setNewChainError] = useState<string | null>(null);
 
   // Rate limiting state
   const [lastOrderTime, setLastOrderTime] = useState<number>(0);
@@ -100,6 +97,8 @@ export default function Home() {
             author: row.author,
             timestamp: "Just now",
             receiptNumber: row.receipt_number,
+            likes: row.likes || 0,
+            dislikes: row.dislikes || 0,
           })),
         );
       }
@@ -118,7 +117,7 @@ export default function Home() {
       )
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "transactions" },
+        { event: "*", schema: "public", table: "transactions" },
         () => fetchTransactions(),
       )
       .subscribe();
@@ -151,6 +150,14 @@ export default function Home() {
     });
   }, [sortedBrands, searchQuery]);
 
+  // Pagination logic
+  const totalPages = Math.ceil(filteredBrands.length / ITEMS_PER_PAGE);
+  const paginatedBrands = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    const end = start + ITEMS_PER_PAGE;
+    return filteredBrands.slice(start, end);
+  }, [filteredBrands, currentPage]);
+
   const handleOpenOrder = (
     brand: FastFoodBrand,
     action: ActionType,
@@ -176,29 +183,58 @@ export default function Home() {
     message: string;
     author: string;
     location?: string;
-  }) => {
+  }): Promise<string | undefined> => {
     // Rate limiting
     const now = Date.now();
     if (now - lastOrderTime < ORDER_COOLDOWN_MS) {
-      return;
+      return "Please wait a few seconds before placing another order.";
     }
     setLastOrderTime(now);
 
     // Validate amount is in allowed set
     if (!ALLOWED_AMOUNTS.includes(params.amount)) {
-      return;
+      return "Invalid amount selected.";
     }
 
-    // Server-side moderation gate (defense in depth)
+    // Client-side moderation gate (defense in depth)
     const msgValidation = validateContent(params.message, "message");
-    if (!msgValidation.isValid) return;
+    if (!msgValidation.isValid) return msgValidation.reason || "Prohibited content detected.";
 
     const authorValidation = validateContent(params.author, "author");
-    if (!authorValidation.isValid) return;
+    if (!authorValidation.isValid) return authorValidation.reason || "Invalid identity.";
 
     if (params.location) {
       const locValidation = validateContent(params.location, "location");
-      if (!locValidation.isValid) return;
+      if (!locValidation.isValid) return locValidation.reason || "Invalid location.";
+    }
+
+    // Persist via server-side API route FIRST (validates & writes with service role)
+    try {
+      const res = await fetch("/api/order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          brandId: params.brandId,
+          actionType: params.actionType,
+          amount: params.amount,
+          message: params.message,
+          author: params.author,
+          location: params.location,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        return data.error || "Server rejected the order. Please try again.";
+      }
+
+      if (data.paymentLink) {
+        window.location.href = data.paymentLink;
+        return; // Redirecting, stop execution
+      }
+    } catch {
+      // Network failure — proceed with optimistic update (assuming demo mode)
     }
 
     const previousLeader = sortedBrands[0];
@@ -274,159 +310,10 @@ export default function Home() {
     setLastRank(newCalculatedRank);
     setIsReceiptOpen(true);
 
-    // Persist via server-side API route (validates & writes with service role)
-    try {
-      await fetch("/api/order", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          brandId: params.brandId,
-          actionType: params.actionType,
-          amount: params.amount,
-          message: params.message,
-          author: params.author,
-          location: params.location,
-        }),
-      });
-    } catch {
-      // Local state already updated — Supabase realtime will reconcile
-    }
+    return undefined; // success — no error
   };
 
-  const handleAddNewChain = async (e: React.FormEvent) => {
-    e.preventDefault();
 
-    // Rate limiting
-    const now = Date.now();
-    if (now - lastOrderTime < ORDER_COOLDOWN_MS) {
-      setNewChainError("Please wait a few seconds before submitting again.");
-      return;
-    }
-    setLastOrderTime(now);
-
-    const cleanX = newChainXHandle.trim().replace(/^@/, "");
-    const cleanNick = newChainNickname.trim();
-    if (!newChainName.trim() || (!cleanX && !cleanNick)) return;
-
-    // Validate amount is in allowed set
-    if (!ALLOWED_AMOUNTS.includes(newChainAmount)) {
-      setNewChainError("Invalid amount selected.");
-      return;
-    }
-
-    const finalizedAuthor = cleanX ? `@${cleanX}` : cleanNick;
-
-    const finalizedMessage =
-      newChainSlogan.trim() ||
-      (newChainAction === "BOOST"
-        ? "Inaugural boost on the board."
-        : "Inaugural sabotage into the abyss.");
-
-    // Automated Content Moderation Gate
-    const brandValidation = validateContent(newChainName.trim(), "brand");
-    if (!brandValidation.isValid) {
-      setNewChainError(brandValidation.reason || "Invalid brand name.");
-      sound.playSabotageBuzzer();
-      return;
-    }
-
-    const sloganValidation = validateContent(finalizedMessage, "message");
-    if (!sloganValidation.isValid) {
-      setNewChainError(sloganValidation.reason || "Inappropriate slogan or note.");
-      sound.playSabotageBuzzer();
-      return;
-    }
-
-    if (cleanNick) {
-      const authorValidation = validateContent(cleanNick, "author");
-      if (!authorValidation.isValid) {
-        setNewChainError(authorValidation.reason || "Invalid nickname format.");
-        sound.playSabotageBuzzer();
-        return;
-      }
-    }
-
-    setNewChainError(null);
-
-    if (newChainAction === "BOOST") {
-      sound.playCashRegister();
-    } else {
-      sound.playSabotageBuzzer();
-    }
-
-    const baseId = newChainName.toLowerCase().replace(/[^a-z0-9]/g, "-");
-    const id = `${baseId}-${crypto.randomUUID().slice(0, 6)}`;
-
-    // Duplicate brand detection
-    const existingBrand = brands.find(
-      (b) => b.name.toLowerCase().trim() === newChainName.trim().toLowerCase()
-    );
-    if (existingBrand) {
-      setNewChainError(`"${existingBrand.name}" is already on the board! Search and boost/sabotage it instead.`);
-      sound.playSabotageBuzzer();
-      return;
-    }
-    const initialScore =
-      newChainAction === "BOOST" ? newChainAmount : -newChainAmount;
-
-    const newBrand: FastFoodBrand = {
-      id,
-      name: newChainName.trim(),
-      category: "Burgers",
-      totalScore: initialScore,
-      totalBoosts: newChainAction === "BOOST" ? newChainAmount : 0,
-      totalSabotages: newChainAction === "SABOTAGE" ? newChainAmount : 0,
-      currentSlogan: finalizedMessage,
-      sloganAuthor: finalizedAuthor,
-      updatedAt: "Just now",
-      clicks: 1,
-      accentColor: newChainAction === "BOOST" ? "#10b981" : "#f43f5e",
-    };
-
-    setBrands((prev) => [...prev, newBrand]);
-    setIsAddChainOpen(false);
-    setNewChainName("");
-    setNewChainSlogan("");
-    setNewChainNickname("");
-    setNewChainXHandle("");
-    setNewChainAmount(2);
-    setNewChainAction("BOOST");
-
-    const receiptNumber = `ORD-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
-    const newTx: Transaction = {
-      id: `tx-${crypto.randomUUID()}`,
-      brandId: id,
-      brandName: newBrand.name,
-      actionType: newChainAction,
-      amount: newChainAmount,
-      message: finalizedMessage,
-      author: finalizedAuthor,
-      timestamp: "Just now",
-      receiptNumber,
-    };
-    setTransactions((prev) => [newTx, ...prev]);
-    setActiveReceipt(newTx);
-    setLastRank(brands.length + 1);
-    setIsReceiptOpen(true);
-
-    // Persist via server-side API route
-    try {
-      await fetch("/api/add-chain", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: newBrand.name,
-          actionType: newChainAction,
-          amount: newChainAmount,
-          message: newBrand.currentSlogan,
-          author: newBrand.sloganAuthor,
-          accentColor: newBrand.accentColor,
-        }),
-      });
-    } catch {
-      // Local state already updated — realtime will reconcile
-    }
-  };
 
   const isGreen = theme === "green";
   const screenBg = isGreen ? "crt-screen" : "crt-amber-screen";
@@ -448,7 +335,7 @@ export default function Home() {
 
       {/* Main Content Area */}
       <main className="max-w-7xl mx-auto px-4 py-8 flex-1 w-full relative z-10">
-        {/* Search Bar & Add Missing Chain */}
+        {/* Search Bar */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-6">
           <div className="relative w-full max-w-md">
             <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -460,22 +347,11 @@ export default function Home() {
               className="w-full bg-zinc-950/80 border border-zinc-800 rounded-lg pl-9 pr-3 py-2 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500 font-mono"
             />
           </div>
-
-          <button
-            onClick={() => {
-              sound.playClick();
-              setIsAddChainOpen(true);
-            }}
-            className="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white font-bold cursor-pointer whitespace-nowrap text-xs transition-colors shadow-sm"
-          >
-            <PlusCircle className="w-3.5 h-3.5 text-emerald-400" />
-            SUBMIT MISSING CHAIN
-          </button>
         </div>
 
         {/* The Leaderboard Grid / Rows */}
         <div className="space-y-2.5">
-          {filteredBrands.map((brand) => {
+          {paginatedBrands.map((brand) => {
             const actualRank =
               sortedBrands.findIndex((b) => b.id === brand.id) + 1;
             return (
@@ -503,14 +379,51 @@ export default function Home() {
               <p className="text-zinc-500 font-mono text-sm">
                 No result found matching &quot;{searchQuery}&quot;.
               </p>
+            </div>
+          )}
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 mt-6 py-4">
               <button
                 onClick={() => {
                   sound.playClick();
-                  setIsAddChainOpen(true);
+                  setCurrentPage(p => Math.max(1, p - 1));
                 }}
-                className="mt-3 px-4 py-2 bg-zinc-900 border border-zinc-700 text-white text-xs font-bold rounded cursor-pointer hover:bg-zinc-800"
+                disabled={currentPage === 1}
+                className="px-3 py-1.5 rounded bg-zinc-900 border border-zinc-700 text-zinc-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-zinc-800 font-mono text-xs transition-colors"
               >
-                Add &quot;{searchQuery}&quot; to the Board ($2)
+                &larr; PREV
+              </button>
+              
+              <div className="flex gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                  <button
+                    key={page}
+                    onClick={() => {
+                      sound.playClick();
+                      setCurrentPage(page);
+                    }}
+                    className={`w-8 h-8 flex items-center justify-center rounded font-mono text-xs font-bold transition-all ${
+                      currentPage === page
+                        ? "bg-emerald-500 text-black border-emerald-400"
+                        : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-white"
+                    } border`}
+                  >
+                    {page}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={() => {
+                  sound.playClick();
+                  setCurrentPage(p => Math.min(totalPages, p + 1));
+                }}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1.5 rounded bg-zinc-900 border border-zinc-700 text-zinc-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-zinc-800 font-mono text-xs transition-colors"
+              >
+                NEXT &rarr;
               </button>
             </div>
           )}
@@ -543,204 +456,6 @@ export default function Home() {
         onClose={() => setIsReceiptOpen(false)}
         brandRank={lastRank}
       />
-
-      {/* Add Missing Chain Modal */}
-      {isAddChainOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
-          <div
-            className={`relative bg-[#0b100d] border-2 ${
-              newChainAction === "BOOST"
-                ? "border-emerald-500/60 shadow-[0_0_25px_rgba(16,185,129,0.2)]"
-                : "border-rose-500/60 shadow-[0_0_25px_rgba(244,63,94,0.2)]"
-            } rounded-xl max-w-md w-full font-mono text-white shadow-2xl p-4 sm:p-5`}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-zinc-800 pb-3 mb-3">
-              <h3 className="text-sm sm:text-base font-bold uppercase tracking-tight flex items-center gap-2">
-                <PlusCircle className="w-4 h-4 text-emerald-400" />
-                ADD MISSING FAST FOOD CHAIN
-              </h3>
-              <button
-                type="button"
-                onClick={() => {
-                  sound.playClick();
-                  setIsAddChainOpen(false);
-                }}
-                className="text-zinc-500 hover:text-white cursor-pointer p-1"
-                title="Close modal"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Form */}
-            <form onSubmit={handleAddNewChain}>
-              {newChainError && (
-                <div className="mb-2.5 p-2 rounded bg-rose-950/80 border border-rose-500/80 flex items-center gap-1.5 text-xs text-rose-300 animate-in fade-in">
-                  <AlertTriangle className="w-4 h-4 flex-shrink-0 text-rose-400" />
-                  <span className="font-bold">{newChainError}</span>
-                </div>
-              )}
-
-              {/* Brand Name Input */}
-              <div className="mb-2.5">
-                <label className="block text-[10px] uppercase text-zinc-400 font-bold mb-1">
-                  Brand Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Whataburger"
-                  value={newChainName}
-                  onChange={(e) => setNewChainName(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-zinc-500 font-mono"
-                />
-              </div>
-
-              {/* Action Toggle: BOOST vs SABOTAGE */}
-              <div className="grid grid-cols-2 gap-2 mb-2.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    sound.playDriveThruChime();
-                    setNewChainAction("BOOST");
-                  }}
-                  className={`flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg border font-bold text-xs uppercase transition-all cursor-pointer ${
-                    newChainAction === "BOOST"
-                      ? "bg-emerald-500/20 border-emerald-400 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.3)]"
-                      : "border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:border-zinc-700 bg-zinc-950/60"
-                  }`}
-                >
-                  <Flame className="w-3.5 h-3.5 fill-current" />
-                  BOOST (+${newChainAmount})
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    sound.playSabotageBuzzer();
-                    setNewChainAction("SABOTAGE");
-                  }}
-                  className={`flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg border font-bold text-xs uppercase transition-all cursor-pointer ${
-                    newChainAction === "SABOTAGE"
-                      ? "bg-rose-500/20 border-rose-500 text-rose-300 shadow-[0_0_12px_rgba(244,63,94,0.3)]"
-                      : "border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:border-zinc-700 bg-zinc-950/60"
-                  }`}
-                >
-                  <Skull className="w-3.5 h-3.5" />
-                  SABOTAGE (-${newChainAmount})
-                </button>
-              </div>
-
-              {/* Amount Selection */}
-              <div className="grid grid-cols-4 gap-2 mb-2.5">
-                {[1, 2, 5, 10].map((val) => (
-                  <button
-                    key={val}
-                    type="button"
-                    onClick={() => {
-                      sound.playClick();
-                      setNewChainAmount(val);
-                    }}
-                    className={`py-1 rounded border font-mono font-bold text-xs transition-all cursor-pointer ${
-                      newChainAmount === val
-                        ? newChainAction === "BOOST"
-                          ? "bg-emerald-500 border-emerald-400 text-black font-extrabold"
-                          : "bg-rose-600 border-rose-500 text-white font-extrabold"
-                        : "border-zinc-800 bg-zinc-950 text-zinc-300 hover:border-zinc-700"
-                    }`}
-                  >
-                    {newChainAction === "BOOST" ? `+$${val}` : `-$${val}`}
-                  </button>
-                ))}
-              </div>
-
-              {/* Slogan / Roast Input */}
-              <div className="mb-2.5">
-                <div className="flex justify-between items-center mb-1">
-                  <label className="block text-[10px] uppercase text-zinc-400 font-bold">
-                    {newChainAction === "BOOST" ? "Inaugural Note" : "Inaugural Roast"}
-                  </label>
-                  <span className="text-[9px] text-zinc-500">
-                    {40 - newChainSlogan.length} chars
-                  </span>
-                </div>
-                <input
-                  type="text"
-                  maxLength={40}
-                  placeholder={
-                    newChainAction === "BOOST"
-                      ? "e.g. Best butter buns on planet earth"
-                      : "e.g. Cardboard fries and cold burgers"
-                  }
-                  value={newChainSlogan}
-                  onChange={(e) => setNewChainSlogan(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-zinc-500 font-mono"
-                />
-              </div>
-
-              {/* Identity (Name OR X Handle) */}
-              <div className="mb-3.5">
-                <div className="flex justify-between items-center text-[10px] font-bold text-zinc-400 uppercase mb-1">
-                  <span>Your Identity *</span>
-                  <span className="text-zinc-500 font-normal">Name OR X Handle</span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <input
-                    type="text"
-                    maxLength={30}
-                    required={!newChainXHandle.trim()}
-                    placeholder="Name / Nickname"
-                    value={newChainNickname}
-                    onChange={(e) => setNewChainNickname(e.target.value)}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-zinc-500 font-mono"
-                  />
-
-                  <div className="relative">
-                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500 font-bold text-xs select-none">
-                      @
-                    </span>
-                    <input
-                      type="text"
-                      maxLength={25}
-                      required={!newChainNickname.trim()}
-                      placeholder="handle"
-                      value={newChainXHandle.replace(/^@/, "")}
-                      onChange={(e) => setNewChainXHandle(e.target.value.replace(/[^a-zA-Z0-9_]/g, ""))}
-                      className="w-full bg-zinc-950 border border-zinc-800 rounded pl-6 pr-8 py-1.5 text-xs text-white focus:outline-none focus:border-zinc-500 font-mono"
-                    />
-                    {newChainXHandle.trim() && (
-                      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center">
-                        <UserAvatar handle={newChainXHandle} size="xs" />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Zero Tolerance Notice */}
-              <p className="text-[9px] text-zinc-500 mb-2 leading-tight">
-                *Conduct: Fake brands, hate speech, slurs, doxxing, or harassment are purged immediately with no refund.
-              </p>
-
-              {/* Submit Button */}
-              <button
-                type="submit"
-                className={`w-full py-2.5 font-bold text-xs sm:text-sm uppercase rounded-lg cursor-pointer transition-colors shadow-lg ${
-                  newChainAction === "BOOST"
-                    ? "bg-emerald-500 hover:bg-emerald-400 text-black shadow-emerald-500/20"
-                    : "bg-rose-600 hover:bg-rose-500 text-white shadow-rose-600/20"
-                }`}
-              >
-                PAY ${newChainAmount} &amp;{" "}
-                {newChainAction === "BOOST" ? "BOOST" : "SABOTAGE"} (
-                {newChainAction === "BOOST" ? `+$${newChainAmount}` : `-$${newChainAmount}`})
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Legal & Parody Protection Disclaimer */}
       <LegalDisclaimer theme={theme} />
