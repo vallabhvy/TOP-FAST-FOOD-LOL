@@ -33,12 +33,21 @@ export const metadata: Metadata = {
     url: "https://topfastfood.lol",
     siteName: "TOPFASTFOOD.LOL",
     type: "website",
+    images: [
+      {
+        url: "/logo.jpg",
+        width: 1200,
+        height: 1200,
+        alt: "TOPFASTFOOD.LOL",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "TOPFASTFOOD.LOL | The Petty Drive-Thru Turf War",
     description:
       "Rankings decided by cold, petty cash. Boost your king or sabotage your rivals.",
+    images: ["/logo.jpg"],
   },
 };
 
