@@ -84,6 +84,7 @@ export const DriveThruHeader: React.FC<HeaderProps> = ({
       <div className="max-w-7xl mx-auto px-4 py-4 sm:py-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-3 flex-wrap">
+            <img src="/logo.jpg" alt="TOPFASTFOOD.LOL Logo" className="w-10 h-10 object-contain rounded-md border border-zinc-800" />
             <h1
               className={`text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tighter uppercase font-mono ${glowClass}`}
             >
