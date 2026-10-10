@@ -2,8 +2,8 @@
 
 import { Metadata } from "next";
 
-export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
-  const { id } = params;
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
   
   // Use the admin service key or just public anon key since it's a public table
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
@@ -47,6 +47,7 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
 
 import ChainClient from "./ChainClient";
 
-export default function ChainPage({ params }: { params: { id: string } }) {
-  return <ChainClient id={params.id} />;
+export default async function ChainPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  return <ChainClient id={id} />;
 }
