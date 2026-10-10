@@ -56,12 +56,24 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "TOPFASTFOOD.LOL",
+    url: "https://topfastfood.lol",
+    description: "The unhinged live pay-to-rank leaderboard deciding the greatest fast food chain on earth through cold, petty micro-bribes.",
+  };
+
   return (
     <html
       lang="en"
       className={`${vt323.variable} ${shareTechMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-[#060907] text-[#39ff14] font-mono selection:bg-[#39ff14] selection:text-black">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
         {children}
       </body>
     </html>
