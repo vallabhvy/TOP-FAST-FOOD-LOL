@@ -84,7 +84,11 @@ export const DriveThruHeader: React.FC<HeaderProps> = ({
       <div className="max-w-7xl mx-auto px-4 py-4 sm:py-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-3 flex-wrap">
-            <img src="/logo.jpg" alt="TOPFASTFOOD.LOL Logo" className="w-10 h-10 object-contain rounded-md border border-zinc-800" />
+            <img
+              src="/logo.jpg"
+              alt="TOPFASTFOOD.LOL Logo"
+              className="w-20 h-20 object-contain rounded-md border border-zinc-800"
+            />
             <h1
               className={`text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tighter uppercase font-mono ${glowClass}`}
             >
@@ -104,7 +108,7 @@ export const DriveThruHeader: React.FC<HeaderProps> = ({
                 <Volume2 className="w-5 h-5 text-emerald-400" />
               )}
             </button>
-            
+
             {/* Login / User Info Button */}
             {user ? (
               <button
@@ -119,7 +123,12 @@ export const DriveThruHeader: React.FC<HeaderProps> = ({
                 onClick={handleTwitterLogin}
                 className="p-1.5 sm:p-2 rounded border border-zinc-800 bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 hover:text-sky-400 transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs font-mono group"
               >
-                <svg className="w-3.5 h-3.5 fill-current group-hover:text-sky-400 text-zinc-500" viewBox="0 0 24 24"><path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/></svg>
+                <svg
+                  className="w-3.5 h-3.5 fill-current group-hover:text-sky-400 text-zinc-500"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z" />
+                </svg>
                 LOGIN
               </button>
             )}
