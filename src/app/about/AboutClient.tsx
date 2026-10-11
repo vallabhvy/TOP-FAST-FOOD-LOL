@@ -72,7 +72,15 @@ export default function AboutClient() {
     setSimLog("Simulator reset. Ready for your order!");
   };
 
-  const faqs = [
+  interface FaqItem {
+    q: string;
+    a: string;
+    icon: string;
+    hasAddButton?: boolean;
+    hasCreatorLink?: boolean;
+  }
+
+  const faqs: FaqItem[] = [
     {
       q: "Will actual food arrive at my house if I use this site?",
       a: "Nope! No scooters or delivery bags are coming to your door. TOPFASTFOOD.LOL is a live gaming scoreboard and comedy poll. It's built for bragging rights and defending your favorite snacks. If you're actually hungry, you'll still need to visit a real drive-thru!",
@@ -426,11 +434,102 @@ export default function AboutClient() {
                           </button>
                         </div>
                       )}
+                      {faq.hasCreatorLink && (
+                        <div className="pt-2.5">
+                          <a
+                            href="https://x.com/vallabh_vy"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={() => sound.playClick()}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-sky-950/80 hover:bg-sky-900 border border-sky-500/50 hover:border-sky-400 text-sky-300 font-mono text-xs font-bold transition-all cursor-pointer shadow-sm active:scale-95"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                            <span>CONNECT WITH VALLABH ON X (@vallabh_vy)</span>
+                          </a>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
               );
             })}
+          </div>
+        </section>
+
+        {/*Creator & Inspiration Section */}
+        <section className="bg-gradient-to-br from-zinc-950 via-black to-zinc-950 border border-emerald-500/40 rounded-xl p-6 sm:p-8 space-y-6 relative overflow-hidden shadow-xl">
+          <div className="absolute -top-12 -right-12 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="flex items-center gap-2 border-b border-zinc-800 pb-3">
+            <Sparkles className="w-5 h-5 text-emerald-400" />
+            <h2 className="text-lg font-bold text-white uppercase tracking-wider">
+              CREATOR &amp; INSPIRATION
+            </h2>
+          </div>
+
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            <div className="space-y-3 max-w-2xl">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full border-2 border-emerald-400 bg-zinc-900 flex items-center justify-center text-xl shadow-md shadow-emerald-500/20">
+                  👨‍💻
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                    <span>Created by Vallabh</span>
+                    <a
+                      href="https://x.com/vallabh_vy"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-sky-400 hover:text-sky-300 hover:underline flex items-center gap-1 font-mono"
+                    >
+                      <span>@vallabh_vy</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </h3>
+                  <p className="text-xs text-emerald-400 font-mono">
+                    Indie Developer &amp; Builder of TOPFASTFOOD.LOL
+                  </p>
+                </div>
+              </div>
+
+              <p className="text-xs sm:text-sm text-zinc-300 font-sans leading-relaxed">
+                This project was{" "}
+                <strong className="text-white">inspired by Outbid.lol</strong> —
+                taking that thrilling, petty live turf-war bidding competition
+                and letting loose on the greatest debate in culinary history:
+                fast food dominance.
+              </p>
+
+              <p className="text-xs text-zinc-400 font-sans leading-relaxed">
+                No corporate sponsorships, no pretentious food critics. Just
+                pure community fun, greasy retro pixel receipts, and drive-thru
+                bragging rights.
+              </p>
+            </div>
+
+            {/* Creator Social Callout Button */}
+            <div className="w-full md:w-auto shrink-0 flex flex-col gap-2">
+              <a
+                href="https://x.com/vallabh_vy"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => sound.playClick()}
+                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-sky-500/50 hover:border-sky-400 text-sky-300 hover:text-white font-mono text-xs font-bold transition-all shadow-md active:scale-95 group cursor-pointer"
+              >
+                <svg
+                  className="w-4 h-4 fill-current group-hover:text-white transition-colors"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                </svg>
+                <span>FOLLOW @vallabh_vy ON X</span>
+                <ExternalLink className="w-3.5 h-3.5 opacity-70 group-hover:opacity-100" />
+              </a>
+
+              <span className="text-[10px] text-zinc-500 text-center font-mono">
+                Questions or feedback? DMs are open!
+              </span>
+            </div>
           </div>
         </section>
 
@@ -466,16 +565,37 @@ export default function AboutClient() {
       {/* Footer */}
       <footer className="border-t border-zinc-900 bg-black py-6 px-4 text-center text-xs text-zinc-600 font-mono">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-          <span>
-            © {new Date().getFullYear()} TOPFASTFOOD.LOL • The Petty Drive-Thru
-            Turf War
-          </span>
+          <div className="flex flex-col sm:flex-row items-center gap-1.5 sm:gap-2 text-center sm:text-left">
+            <span>
+              © {new Date().getFullYear()} TOPFASTFOOD.LOL • The Petty
+              Drive-Thru Turf War
+            </span>
+            <span className="hidden sm:inline text-zinc-700">•</span>
+            <span>
+              Created by{" "}
+              <a
+                href="https://x.com/vallabh_vy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-zinc-400 hover:text-emerald-400 transition-colors underline font-bold"
+              >
+                Vallabh (@vallabh_vy)
+              </a>{" "}
+              (Inspired by Outbid.lol)
+            </span>
+          </div>
           <div className="flex items-center gap-4 text-zinc-500">
             <Link href="/" className="hover:text-emerald-400 transition-colors">
               Leaderboard
             </Link>
             <Link href="/about" className="text-emerald-400 font-bold">
               About
+            </Link>
+            <Link
+              href="/disclaimer"
+              className="hover:text-emerald-400 transition-colors"
+            >
+              Legal
             </Link>
           </div>
         </div>

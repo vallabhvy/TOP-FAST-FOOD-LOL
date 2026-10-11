@@ -21,7 +21,8 @@ export const LegalDisclaimer: React.FC<LegalDisclaimerProps> = ({ theme }) => {
           <div className="flex items-center gap-2 text-zinc-400">
             <ShieldCheck className="w-4 h-4 text-emerald-500" />
             <span>
-              TOPFASTFOOD.LOL is a parody &amp; community entertainment poll. Nominative Fair Use applied.
+              TOPFASTFOOD.LOL is a parody &amp; community entertainment poll.
+              Nominative Fair Use applied.
             </span>
           </div>
           <div className="flex items-center gap-3">
@@ -39,30 +40,69 @@ export const LegalDisclaimer: React.FC<LegalDisclaimerProps> = ({ theme }) => {
         {isExpanded && (
           <div className="space-y-3 pt-2 text-[11px] text-zinc-400 bg-zinc-950 p-4 rounded-lg border border-zinc-900">
             <div>
-              <span className={`font-bold uppercase ${glowText}`}>1. Nominative Fair Use &amp; Trademark:</span>
+              <span className={`font-bold uppercase ${glowText}`}>
+                1. Nominative Fair Use &amp; Trademark:
+              </span>
               <p className="mt-0.5">
-                All restaurant names, trademarks™, and registered® trademarks referenced on topfastfood.lol are the property of their respective trademark holders. Use of these names on this platform is solely for nominative identification, parody, and user-generated community ranking purposes. TOPFASTFOOD.LOL is not endorsed by, sponsored by, or affiliated with McDonald&apos;s, Wendy&apos;s, Taco Bell, or any other fast-food enterprise.
+                All restaurant names, trademarks™, and registered® trademarks
+                referenced on topfastfood.lol are the property of their
+                respective trademark holders. Use of these names on this
+                platform is solely for nominative identification, parody, and
+                user-generated community ranking purposes. TOPFASTFOOD.LOL is
+                not endorsed by, sponsored by, or affiliated with
+                McDonald&apos;s, Wendy&apos;s, Taco Bell, or any other fast-food
+                enterprise.
               </p>
             </div>
 
             <div>
-              <span className={`font-bold uppercase ${glowText}`}>2. Defamation &amp; User-Generated Speech (Section 230 / Safe Harbor):</span>
+              <span className={`font-bold uppercase ${glowText}`}>
+                2. Defamation &amp; User-Generated Speech (Section 230 / Safe
+                Harbor):
+              </span>
               <p className="mt-0.5">
-                Slogans and comments attached to rank transactions represent subjective opinions submitted by anonymous third-party users. TOPFASTFOOD.LOL acts as an interactive computer service provider under 47 U.S.C. § 230 and international safe-harbor standards. We do not endorse defamatory claims or factual assertions regarding food safety. For Cease &amp; Desist inquiries, trademark matters, or content removal requests, please contact us directly at <a href="mailto:team@vyncrafts.com" className="text-emerald-400 underline font-bold">team@vyncrafts.com</a> before taking formal legal action.
+                Slogans and comments attached to rank transactions represent
+                subjective opinions submitted by anonymous third-party users.
+                TOPFASTFOOD.LOL acts as an interactive computer service provider
+                under 47 U.S.C. § 230 and international safe-harbor standards.
+                We do not endorse defamatory claims or factual assertions
+                regarding food safety. For Cease &amp; Desist inquiries,
+                trademark matters, or content removal requests, please contact
+                us directly at{" "}
+                <a
+                  href="mailto:team@vyncrafts.com"
+                  className="text-emerald-400 underline font-bold"
+                >
+                  team@vyncrafts.com
+                </a>{" "}
+                before taking formal legal action.
               </p>
             </div>
 
             <div>
-              <span className={`font-bold uppercase ${glowText}`}>3. Digital Entertainment Services (No Gaming / No Bribes):</span>
+              <span className={`font-bold uppercase ${glowText}`}>
+                3. Digital Entertainment Services (No Gaming / No Bribes):
+              </span>
               <p className="mt-0.5">
-                Transactions on this platform constitute voluntary digital micro-tips for entertainment, expressive speech, and community poll participation. Transactions do not confer securities, gambling payouts, advertising contracts, or corporate equity. All contributions are final and strictly non-refundable.
+                Transactions on this platform constitute voluntary digital
+                micro-tips for entertainment, expressive speech, and community
+                poll participation. Transactions do not confer securities,
+                gambling payouts, advertising contracts, or corporate equity.
+                All contributions are final and strictly non-refundable.
               </p>
             </div>
 
             <div>
-              <span className={`font-bold uppercase ${glowText}`}>4. Content Moderation &amp; Zero-Tolerance Conduct:</span>
+              <span className={`font-bold uppercase ${glowText}`}>
+                4. Content Moderation &amp; Zero-Tolerance Conduct:
+              </span>
               <p className="mt-0.5">
-                Hate speech, racial or religious slurs, doxxing (publishing real names, phone numbers, or private addresses), threats, and illegal content are strictly banned. The platform reserves the absolute right to purge, delete, or quarantine any brand, comment, or identity that violates community standards without notice and with ZERO REFUND.
+                Hate speech, racial or religious slurs, doxxing (publishing real
+                names, phone numbers, or private addresses), threats, and
+                illegal content are strictly banned. The platform reserves the
+                absolute right to purge, delete, or quarantine any brand,
+                comment, or identity that violates community standards without
+                notice and with ZERO REFUND.
               </p>
             </div>
           </div>
@@ -75,24 +115,45 @@ export const LegalDisclaimer: React.FC<LegalDisclaimerProps> = ({ theme }) => {
               Leaderboard
             </a>
             <span>•</span>
-            <a href="/about" className="hover:text-emerald-400 transition-colors text-zinc-300 font-bold">
+            <a
+              href="/about"
+              className="hover:text-emerald-400 transition-colors text-zinc-300 font-bold"
+            >
               About
             </a>
             <span>•</span>
-            <a href="/disclaimer" className="hover:text-emerald-400 transition-colors">
+            <a
+              href="/disclaimer"
+              className="hover:text-emerald-400 transition-colors"
+            >
               Disclaimers &amp; Safe Harbor
             </a>
             <span>•</span>
-            <a href="/terms" className="hover:text-emerald-400 transition-colors">
+            <a
+              href="/terms"
+              className="hover:text-emerald-400 transition-colors"
+            >
               Terms &amp; Conditions
             </a>
             <span>•</span>
-            <a href="/privacy" className="hover:text-emerald-400 transition-colors">
+            <a
+              href="/privacy"
+              className="hover:text-emerald-400 transition-colors"
+            >
               Privacy Policy
             </a>
           </div>
           <div className="text-[10px] text-zinc-600 text-center sm:text-right">
-            © {new Date().getFullYear()} TOPFASTFOOD.LOL • The Petty Drive-Thru Turf War • Zero food critics consulted.
+            © {new Date().getFullYear()} TOPFASTFOOD.LOL • Created by{" "}
+            <a
+              href="https://x.com/vallabh_vy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-zinc-400 hover:text-emerald-400 underline font-bold"
+            >
+              Vallabh (@vallabh_vy)
+            </a>{" "}
+            (Inspired by Outbid.lol)
           </div>
         </div>
       </div>
