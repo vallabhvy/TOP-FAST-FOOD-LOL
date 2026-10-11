@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Volume2, VolumeX, Scale, ShieldCheck } from "lucide-react";
+import { Volume2, VolumeX, Scale, ShieldCheck, FileText } from "lucide-react";
 import { CRTColorTheme, Transaction } from "@/types";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { sound } from "@/lib/sound";
@@ -157,11 +157,21 @@ export const DriveThruHeader: React.FC<HeaderProps> = ({
         </div>
 
         {/* Legal Policies Navigation */}
-        <div className="flex items-center gap-2 self-start md:self-center">
+        <div className="flex flex-wrap items-center gap-2 self-start md:self-center">
+          <Link
+            href="/disclaimer"
+            onClick={() => sound.playClick()}
+            className="px-2.5 py-1.5 rounded-lg border border-zinc-800 bg-zinc-950/80 hover:bg-zinc-900 hover:border-emerald-500/50 text-zinc-400 hover:text-emerald-400 transition-all font-mono text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+            title="Legal Disclaimers & Safe Harbor"
+          >
+            <FileText className="w-3.5 h-3.5 text-zinc-500" />
+            <span>DISCLAIMER</span>
+          </Link>
+
           <Link
             href="/terms"
             onClick={() => sound.playClick()}
-            className="px-3 py-1.5 rounded-lg border border-zinc-800 bg-zinc-950/80 hover:bg-zinc-900 hover:border-emerald-500/50 text-zinc-400 hover:text-emerald-400 transition-all font-mono text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+            className="px-2.5 py-1.5 rounded-lg border border-zinc-800 bg-zinc-950/80 hover:bg-zinc-900 hover:border-emerald-500/50 text-zinc-400 hover:text-emerald-400 transition-all font-mono text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
             title="Terms & Conditions"
           >
             <Scale className="w-3.5 h-3.5 text-zinc-500" />
@@ -171,7 +181,7 @@ export const DriveThruHeader: React.FC<HeaderProps> = ({
           <Link
             href="/privacy"
             onClick={() => sound.playClick()}
-            className="px-3 py-1.5 rounded-lg border border-zinc-800 bg-zinc-950/80 hover:bg-zinc-900 hover:border-emerald-500/50 text-zinc-400 hover:text-emerald-400 transition-all font-mono text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+            className="px-2.5 py-1.5 rounded-lg border border-zinc-800 bg-zinc-950/80 hover:bg-zinc-900 hover:border-emerald-500/50 text-zinc-400 hover:text-emerald-400 transition-all font-mono text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
             title="Privacy Policy"
           >
             <ShieldCheck className="w-3.5 h-3.5 text-zinc-500" />

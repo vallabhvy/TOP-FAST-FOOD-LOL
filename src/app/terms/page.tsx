@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, ShieldCheck, Scale, FileText } from "lucide-react";
+import { LegalTabs } from "@/components/LegalTabs";
 
 export const metadata: Metadata = {
   title: "Terms & Conditions | TOPFASTFOOD.LOL",
@@ -44,6 +45,8 @@ export default function TermsPage() {
 
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 py-10 flex-1 w-full space-y-8 relative z-10">
+        {/* Navigation Tabs at Top */}
+        <LegalTabs activeTab="terms" />
         <div className="border-b border-zinc-800 pb-5">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/40 border border-emerald-500/40 text-emerald-400 text-xs font-bold mb-3">
             <Scale className="w-3.5 h-3.5" />
@@ -114,6 +117,16 @@ export default function TermsPage() {
             </h2>
             <p>
               Users agree not to execute automated bots, crawlers, or stress scripts against our APIs. A strict rate limit of 100 requests per minute per IP address is enforced across all submission endpoints. Excessive requests will be automatically throttled with HTTP 429 status codes.
+            </p>
+          </div>
+
+          {/* Section 6 */}
+          <div className="bg-zinc-950/90 border border-emerald-500/40 p-5 rounded-lg space-y-2">
+            <h2 className="text-sm font-bold text-white font-mono uppercase tracking-wider flex items-center gap-2">
+              <span className="text-emerald-400">06.</span> Cease &amp; Desist, Trademark Infringement &amp; Removal Requests
+            </h2>
+            <p>
+              If you represent a restaurant enterprise, trademark registrant, or third party requesting the alteration, quarantine, or removal of any user-submitted content or brand reference, you agree to submit a formal notice to our legal operations team at <a href="mailto:team@vyncrafts.com" className="text-emerald-400 underline font-bold">team@vyncrafts.com</a> prior to initiating formal litigation or seeking injunctive relief. We will review and act upon all substantiated notices in good faith.
             </p>
           </div>
         </div>

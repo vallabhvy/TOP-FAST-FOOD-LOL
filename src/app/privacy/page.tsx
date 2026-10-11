@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, ShieldCheck, Lock, EyeOff } from "lucide-react";
+import { LegalTabs } from "@/components/LegalTabs";
 
 export const metadata: Metadata = {
   title: "Privacy Policy | TOPFASTFOOD.LOL",
@@ -44,6 +45,8 @@ export default function PrivacyPage() {
 
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 py-10 flex-1 w-full space-y-8 relative z-10">
+        {/* Navigation Tabs at Top */}
+        <LegalTabs activeTab="privacy" />
         <div className="border-b border-zinc-800 pb-5">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/40 border border-emerald-500/40 text-emerald-400 text-xs font-bold mb-3">
             <Lock className="w-3.5 h-3.5" />
@@ -124,7 +127,7 @@ export default function PrivacyPage() {
               <span className="text-amber-400">05.</span> Your Rights &amp; Data Deletion
             </h2>
             <p>
-              You have the right to sign out of X at any time by clicking the sign-out button. If you wish to request the deletion or redaction of a comment or handle associated with a transaction, you can submit a removal notice to our team.
+              You have the right to sign out of X at any time by clicking the sign-out button. If you wish to request the deletion or redaction of a comment or handle associated with a transaction, you can submit a removal notice to our team at <a href="mailto:team@vyncrafts.com" className="text-emerald-400 underline font-bold">team@vyncrafts.com</a>.
             </p>
           </div>
         </div>

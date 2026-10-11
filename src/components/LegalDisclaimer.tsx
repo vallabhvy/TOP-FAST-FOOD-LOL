@@ -24,13 +24,15 @@ export const LegalDisclaimer: React.FC<LegalDisclaimerProps> = ({ theme }) => {
               TOPFASTFOOD.LOL is a parody &amp; community entertainment poll. Nominative Fair Use applied.
             </span>
           </div>
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="flex items-center gap-1 text-zinc-400 hover:text-white transition-colors cursor-pointer text-[11px] uppercase tracking-wider"
-          >
-            <span>{isExpanded ? "Hide Legal Disclaimers" : "Read Legal Disclaimers & Safe Harbor"}</span>
-            {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-          </button>
+          <div className="flex items-center gap-3">
+            <a
+              href="/disclaimer"
+              className="text-zinc-400 hover:text-emerald-400 transition-colors text-[11px] uppercase tracking-wider font-bold flex items-center gap-1"
+            >
+              <span>Read Legal Disclaimers &amp; Safe Harbor</span>
+              <span className="text-emerald-400">&rarr;</span>
+            </a>
+          </div>
         </div>
 
         {/* Collapsible Detailed Legal Protection */}
@@ -46,7 +48,7 @@ export const LegalDisclaimer: React.FC<LegalDisclaimerProps> = ({ theme }) => {
             <div>
               <span className={`font-bold uppercase ${glowText}`}>2. Defamation &amp; User-Generated Speech (Section 230 / Safe Harbor):</span>
               <p className="mt-0.5">
-                Slogans and comments attached to rank transactions represent subjective opinions submitted by anonymous third-party users. TOPFASTFOOD.LOL acts as an interactive computer service provider under 47 U.S.C. § 230 and international safe-harbor standards. We do not endorse defamatory claims or factual assertions regarding food safety. To request the removal of a comment or trademark reference, please submit a notice to legal@topfastfood.lol.
+                Slogans and comments attached to rank transactions represent subjective opinions submitted by anonymous third-party users. TOPFASTFOOD.LOL acts as an interactive computer service provider under 47 U.S.C. § 230 and international safe-harbor standards. We do not endorse defamatory claims or factual assertions regarding food safety. For Cease &amp; Desist inquiries, trademark matters, or content removal requests, please contact us directly at <a href="mailto:team@vyncrafts.com" className="text-emerald-400 underline font-bold">team@vyncrafts.com</a> before taking formal legal action.
               </p>
             </div>
 
@@ -75,6 +77,10 @@ export const LegalDisclaimer: React.FC<LegalDisclaimerProps> = ({ theme }) => {
             <span>•</span>
             <a href="/about" className="hover:text-emerald-400 transition-colors text-zinc-300 font-bold">
               About
+            </a>
+            <span>•</span>
+            <a href="/disclaimer" className="hover:text-emerald-400 transition-colors">
+              Disclaimers &amp; Safe Harbor
             </a>
             <span>•</span>
             <a href="/terms" className="hover:text-emerald-400 transition-colors">
