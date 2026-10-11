@@ -54,12 +54,21 @@ export const DriveThruHeader: React.FC<HeaderProps> = ({
   const handleTwitterLogin = async () => {
     sound.playClick();
     if (!supabase) return;
-    await supabase.auth.signInWithOAuth({
-      provider: "twitter",
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "x" as any,
       options: {
         redirectTo: window.location.origin,
       },
     });
+    if (error) {
+      console.warn("Fallback to legacy twitter provider:", error);
+      await supabase.auth.signInWithOAuth({
+        provider: "twitter",
+        options: {
+          redirectTo: window.location.origin,
+        },
+      });
+    }
   };
 
   const handleLogout = async () => {
@@ -116,7 +125,7 @@ export const DriveThruHeader: React.FC<HeaderProps> = ({
                 title="Sign out"
                 className="p-1.5 sm:p-2 rounded border border-sky-900/50 bg-sky-950/30 text-sky-400 hover:text-white hover:bg-rose-950/30 hover:border-rose-900/50 transition-all cursor-pointer flex items-center justify-center text-xs font-mono font-bold"
               >
-                @{user.user_metadata?.user_name || "user"}
+                @{user.user_metadata?.user_name || user.user_metadata?.preferred_username || "user"}
               </button>
             ) : (
               <button

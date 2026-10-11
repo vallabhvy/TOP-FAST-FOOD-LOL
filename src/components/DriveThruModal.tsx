@@ -66,14 +66,16 @@ export const DriveThruModal: React.FC<DriveThruModalProps> = ({
       supabase.auth.getSession().then(({ data: { session } }) => {
         setUser(session?.user || null);
         if (session?.user) {
-          setXHandle(`@${session.user.user_metadata?.user_name || "user"}`);
+          const handle = session.user.user_metadata?.user_name || session.user.user_metadata?.preferred_username || "user";
+          setXHandle(`@${handle}`);
         }
       });
       
       const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
         setUser(session?.user || null);
         if (session?.user) {
-          setXHandle(`@${session.user.user_metadata?.user_name || "user"}`);
+          const handle = session.user.user_metadata?.user_name || session.user.user_metadata?.preferred_username || "user";
+          setXHandle(`@${handle}`);
         } else {
           setXHandle("");
         }
@@ -346,10 +348,17 @@ export const DriveThruModal: React.FC<DriveThruModalProps> = ({
                     onClick={async () => {
                       sound.playClick();
                       if (!supabase) return;
-                      await supabase.auth.signInWithOAuth({
-                        provider: "twitter",
+                      const { error } = await supabase.auth.signInWithOAuth({
+                        provider: "x" as any,
                         options: { redirectTo: window.location.origin },
                       });
+                      if (error) {
+                        console.warn("Fallback to legacy twitter provider:", error);
+                        await supabase.auth.signInWithOAuth({
+                          provider: "twitter",
+                          options: { redirectTo: window.location.origin },
+                        });
+                      }
                     }}
                     className="w-full bg-zinc-950 hover:bg-sky-950/20 border border-zinc-800 hover:border-sky-500/50 rounded py-1.5 text-[10px] sm:text-xs text-zinc-400 hover:text-sky-400 font-mono flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                   >

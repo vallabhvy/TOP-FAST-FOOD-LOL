@@ -15,6 +15,7 @@ const shareTechMono = Share_Tech_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://topfastfood.lol"),
   title: "TOPFASTFOOD.LOL",
   description:
     "The unhinged live pay-to-rank leaderboard deciding the greatest fast food chain on earth through cold, petty micro-bribes & grease sabotage. No food critics. Just cash.",

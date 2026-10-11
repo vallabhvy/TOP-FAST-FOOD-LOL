@@ -23,12 +23,21 @@ export default function ChainClient({ id }: { id: string }) {
   const handleTwitterLogin = async () => {
     sound.playClick();
     if (!supabase) return;
-    await supabase.auth.signInWithOAuth({
-      provider: "twitter",
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "x" as any,
       options: {
         redirectTo: window.location.origin + `/chain/${id}`,
       },
     });
+    if (error) {
+      console.warn("Fallback to legacy twitter provider:", error);
+      await supabase.auth.signInWithOAuth({
+        provider: "twitter",
+        options: {
+          redirectTo: window.location.origin + `/chain/${id}`,
+        },
+      });
+    }
   };
 
   // Initialize deviceId for anonymous voting
@@ -127,7 +136,7 @@ export default function ChainClient({ id }: { id: string }) {
     setIsSubmittingReply(true);
     sound.playClick();
     
-    const handle = `@${user.user_metadata?.user_name || "user"}`;
+    const handle = `@${user.user_metadata?.user_name || user.user_metadata?.preferred_username || "user"}`;
     const avatar = user.user_metadata?.avatar_url || "";
 
     const { error } = await supabase.from("replies").insert({
@@ -275,7 +284,7 @@ export default function ChainClient({ id }: { id: string }) {
                             }}
                             className="text-sky-400 hover:text-white transition-colors flex items-center gap-1 ml-4 border border-sky-900/50 bg-sky-950/30 px-2 py-1 rounded cursor-pointer"
                           >
-                            Reply as @{user.user_metadata?.user_name || "user"}
+                            Reply as @{user.user_metadata?.user_name || user.user_metadata?.preferred_username || "user"}
                           </button>
                         ) : (
                           <button 
