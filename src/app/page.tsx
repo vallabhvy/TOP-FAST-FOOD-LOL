@@ -2,13 +2,14 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import confetti from "canvas-confetti";
-import { Search, PlusCircle, Flame, Skull, X, AlertTriangle } from "lucide-react";
+import { Search, PlusCircle, Plus, Flame, Skull, X, AlertTriangle } from "lucide-react";
 import { FastFoodBrand, ActionType, Transaction, CRTColorTheme } from "@/types";
 import { INITIAL_BRANDS, INITIAL_TRANSACTIONS } from "@/lib/initialData";
 import { DriveThruHeader } from "@/components/DriveThruHeader";
 import { BrandCard } from "@/components/BrandCard";
 import { DriveThruModal } from "@/components/DriveThruModal";
 import { ReceiptModal } from "@/components/ReceiptModal";
+import { AddChainModal } from "@/components/AddChainModal";
 import { LegalDisclaimer } from "@/components/LegalDisclaimer";
 import { UserAvatar } from "@/components/UserAvatar";
 import { sound } from "@/lib/sound";
@@ -43,6 +44,9 @@ export default function Home() {
   // Receipt Modal State
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [activeReceipt, setActiveReceipt] = useState<Transaction | null>(null);
+
+  // Add Chain Modal State
+  const [isAddChainOpen, setIsAddChainOpen] = useState(false);
   const [lastRank, setLastRank] = useState<number>(1);
 
   // Rate limiting state
@@ -127,10 +131,10 @@ export default function Home() {
     };
   }, []);
 
-  // Sorted Brands by totalScore descending (excluding hidden/quarantined chains)
+  // Sorted Brands by totalScore descending (excluding hidden & pending review chains)
   const sortedBrands = useMemo(() => {
     return [...brands]
-      .filter((b) => b.status !== "hidden")
+      .filter((b) => b.status === "approved" || (!b.status && b.status !== "hidden" && b.status !== "pending"))
       .sort((a, b) => b.totalScore - a.totalScore);
   }, [brands]);
 
@@ -335,7 +339,7 @@ export default function Home() {
 
       {/* Main Content Area */}
       <main className="max-w-7xl mx-auto px-4 py-8 flex-1 w-full relative z-10">
-        {/* Search Bar */}
+        {/* Search Bar & Add Chain Action */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-6">
           <div className="relative w-full max-w-md">
             <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -347,6 +351,18 @@ export default function Home() {
               className="w-full bg-zinc-950/80 border border-zinc-800 rounded-lg pl-9 pr-3 py-2 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500 font-mono"
             />
           </div>
+
+          <button
+            onClick={() => {
+              sound.playClick();
+              setIsAddChainOpen(true);
+            }}
+            className="px-3.5 py-2 rounded-lg bg-emerald-950/70 hover:bg-emerald-900 border border-emerald-500/50 hover:border-emerald-400 text-emerald-300 hover:text-white font-mono text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md shadow-emerald-950/40 active:scale-95 flex-shrink-0"
+            title="Propose a fast food chain to be added"
+          >
+            <Plus className="w-3.5 h-3.5 text-emerald-400" />
+            <span>+ ADD A CHAIN</span>
+          </button>
         </div>
 
         {/* The Leaderboard Grid / Rows */}
@@ -455,6 +471,13 @@ export default function Home() {
         isOpen={isReceiptOpen}
         onClose={() => setIsReceiptOpen(false)}
         brandRank={lastRank}
+      />
+
+      {/* Add Chain Modal (Pending Review Queue) */}
+      <AddChainModal
+        isOpen={isAddChainOpen}
+        onClose={() => setIsAddChainOpen(false)}
+        theme={theme}
       />
 
       {/* Legal & Parody Protection Disclaimer */}

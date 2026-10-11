@@ -2,9 +2,6 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { validateContent } from "@/lib/moderation";
 
-const ALLOWED_AMOUNTS = [1, 2, 5, 10];
-const ALLOWED_ACTIONS = ["BOOST", "SABOTAGE"] as const;
-
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
@@ -13,28 +10,58 @@ function getServerSupabase() {
   return createClient(supabaseUrl, supabaseServiceKey);
 }
 
-// Simple in-memory rate limiter per IP
-const rateLimitMap = new Map<string, number>();
-const RATE_LIMIT_MS = 5000; // 5s cooldown for adding brands
+// ============================================================================
+// Rate Limiter: Maximum 100 requests per minute per IP
+// ============================================================================
+interface RateLimitBucket {
+  count: number;
+  resetAt: number;
+}
 
-function isRateLimited(ip: string): boolean {
+const rateLimitMap = new Map<string, RateLimitBucket>();
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+const MAX_REQUESTS_PER_MINUTE = 100;
+
+function checkRateLimit(ip: string): { isLimited: boolean; remaining: number; resetInSec: number } {
   const now = Date.now();
-  const last = rateLimitMap.get(ip);
-  if (last && now - last < RATE_LIMIT_MS) {
-    return true;
+  const bucket = rateLimitMap.get(ip);
+
+  // If no entry or window expired, start a new window
+  if (!bucket || now >= bucket.resetAt) {
+    rateLimitMap.set(ip, {
+      count: 1,
+      resetAt: now + RATE_LIMIT_WINDOW_MS,
+    });
+    return {
+      isLimited: false,
+      remaining: MAX_REQUESTS_PER_MINUTE - 1,
+      resetInSec: Math.ceil(RATE_LIMIT_WINDOW_MS / 1000),
+    };
   }
-  rateLimitMap.set(ip, now);
-  if (rateLimitMap.size > 500) {
-    const cutoff = now - RATE_LIMIT_MS * 10;
-    for (const [key, time] of rateLimitMap.entries()) {
-      if (time < cutoff) rateLimitMap.delete(key);
+
+  // Inside the 1-minute window
+  bucket.count++;
+  const remaining = Math.max(0, MAX_REQUESTS_PER_MINUTE - bucket.count);
+  const resetInSec = Math.ceil((bucket.resetAt - now) / 1000);
+
+  // Periodic garbage collection for memory hygiene
+  if (rateLimitMap.size > 1000) {
+    for (const [key, val] of rateLimitMap.entries()) {
+      if (now >= val.resetAt) {
+        rateLimitMap.delete(key);
+      }
     }
   }
-  return false;
+
+  return {
+    isLimited: bucket.count > MAX_REQUESTS_PER_MINUTE,
+    remaining,
+    resetInSec,
+  };
 }
 
 export async function POST(req: Request) {
-  // CORS / CSRF Protection: Ensure request comes from our frontend
+  // CORS / CSRF Protection
   const origin = req.headers.get("origin") || req.headers.get("referer") || "";
   const isLocalhost = origin.includes("localhost:3000") || origin.includes("127.0.0.1:3000");
   const isProductionDomain = origin.includes("topfastfood.lol");
@@ -46,18 +73,35 @@ export async function POST(req: Request) {
     );
   }
 
-  // Rate limiting
+  // Rate Limiting: 100 requests per minute per IP
   const forwarded = req.headers.get("x-forwarded-for");
   const ip = forwarded?.split(",")[0]?.trim() || "unknown";
-  if (isRateLimited(ip)) {
+  const { isLimited, remaining, resetInSec } = checkRateLimit(ip);
+
+  const rateLimitHeaders = {
+    "X-RateLimit-Limit": MAX_REQUESTS_PER_MINUTE.toString(),
+    "X-RateLimit-Remaining": remaining.toString(),
+    "X-RateLimit-Reset": resetInSec.toString(),
+  };
+
+  if (isLimited) {
     return NextResponse.json(
-      { error: "Too many requests. Please wait before adding another chain." },
-      { status: 429 }
+      {
+        error: "Rate limit exceeded: Maximum 100 requests per minute allowed.",
+      },
+      {
+        status: 429,
+        headers: {
+          ...rateLimitHeaders,
+          "Retry-After": resetInSec.toString(),
+        },
+      }
     );
   }
 
   let body: {
     name?: string;
+    category?: string;
     actionType?: string;
     amount?: number;
     message?: string;
@@ -68,51 +112,48 @@ export async function POST(req: Request) {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
-  }
-
-  const { name, actionType, amount, message, author, accentColor } = body;
-
-  // 1. Validate required fields
-  if (!name || !actionType || !amount || !message || !author) {
     return NextResponse.json(
-      { error: "Missing required fields." },
-      { status: 400 }
+      { error: "Invalid JSON body." },
+      { status: 400, headers: rateLimitHeaders }
     );
   }
 
-  // 1b. Type-safety: reject non-string inputs that could bypass regex moderation
+  const {
+    name,
+    category = "Burgers",
+    actionType = "BOOST",
+    amount = 1,
+    message = "Waiting for inaugural claim...",
+    author = "AnonymousFan",
+    accentColor = "#f59e0b",
+  } = body;
+
+  // 1. Validate required fields
+  if (!name || typeof name !== "string") {
+    return NextResponse.json(
+      { error: "Chain name is required." },
+      { status: 400, headers: rateLimitHeaders }
+    );
+  }
+
   if (
-    typeof name !== "string" ||
     typeof actionType !== "string" ||
-    typeof amount !== "number" ||
     typeof message !== "string" ||
     typeof author !== "string" ||
-    (accentColor !== undefined && typeof accentColor !== "string")
+    typeof category !== "string"
   ) {
     return NextResponse.json(
       { error: "Invalid field types." },
-      { status: 400 }
+      { status: 400, headers: rateLimitHeaders }
     );
   }
 
-
-  // 2. Validate action type
-  if (!ALLOWED_ACTIONS.includes(actionType as typeof ALLOWED_ACTIONS[number])) {
-    return NextResponse.json({ error: "Invalid action type." }, { status: 400 });
-  }
-
-  // 3. Validate amount
-  if (!ALLOWED_AMOUNTS.includes(amount)) {
-    return NextResponse.json({ error: "Invalid amount." }, { status: 400 });
-  }
-
-  // 4. Content moderation — server-side gate
+  // 2. Content moderation
   const nameCheck = validateContent(name, "brand");
   if (!nameCheck.isValid) {
     return NextResponse.json(
       { error: nameCheck.reason || "Brand name contains prohibited content." },
-      { status: 422 }
+      { status: 422, headers: rateLimitHeaders }
     );
   }
 
@@ -120,7 +161,7 @@ export async function POST(req: Request) {
   if (!msgCheck.isValid) {
     return NextResponse.json(
       { error: msgCheck.reason || "Message contains prohibited content." },
-      { status: 422 }
+      { status: 422, headers: rateLimitHeaders }
     );
   }
 
@@ -128,136 +169,94 @@ export async function POST(req: Request) {
   if (!authorCheck.isValid) {
     return NextResponse.json(
       { error: authorCheck.reason || "Author identity is invalid." },
-      { status: 422 }
+      { status: 422, headers: rateLimitHeaders }
     );
   }
 
-  // 5. Generate Payment Session or Fallback to Demo Mode
-  const dodoKey = process.env.DODO_PAYMENTS_API_KEY;
   const baseId = name.toLowerCase().replace(/[^a-z0-9]/g, "-");
   const id = `${baseId}-${crypto.randomUUID().slice(0, 6)}`;
   const initialScore = actionType === "BOOST" ? amount : -amount;
-  const receiptNumber = `ORD-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+  const receiptNumber = `REQ-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
 
   const supabase = getServerSupabase();
 
-  if (dodoKey) {
-    // SECURE FLOW: Real Money via DodoPayments
-    try {
-      const DodoPayments = (await import("dodopayments")).default;
-      const dodo = new DodoPayments({ bearerToken: dodoKey });
-
-      // Build metadata to pass to the webhook later
-      const metadata = {
-        brandId: id,
-        name: name.trim(),
-        actionType,
-        amount: amount.toString(),
-        message,
-        author,
-        accentColor: accentColor || "#f59e0b",
-        type: "add_chain"
-      };
-
-      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || req.headers.get("origin") || "http://localhost:3000";
-
-      const payment = await dodo.payments.create({
-        billing: {
-          city: "",
-          country: "US",
-          state: "",
-          street: "",
-          zipcode: "",
-        },
-        customer: {
-          email: "",
-          name: author,
-        },
-        product_cart: [
-          {
-            product_id: "default_product_id",
-            quantity: 1,
-            amount: amount * 100,
-          },
-        ],
-        return_url: `${baseUrl}?payment=success`,
-        metadata,
-      });
-
-      return NextResponse.json({
-        success: true,
-        paymentLink: payment.payment_link || "",
-        mode: "live",
-      });
-    } catch (error) {
-      console.error("DodoPayments Error:", error);
-      return NextResponse.json(
-        { error: "Failed to initialize payment session. Please try again." },
-        { status: 500 }
-      );
-    }
-  }
-
-  // FALLBACK DEMO FLOW (No API Keys configured)
   if (!supabase) {
-    return NextResponse.json({
-      success: true,
-      id,
-      receiptNumber,
-      mode: "local",
-    });
+    // Local / Demo mode without database
+    return NextResponse.json(
+      {
+        success: true,
+        id,
+        receiptNumber,
+        status: "pending",
+        message:
+          "Chain submitted for review! It will be reviewed by our team before going live on the leaderboard.",
+      },
+      { headers: rateLimitHeaders }
+    );
   }
 
   // Check for duplicate brand names
   const { data: existing } = await supabase
     .from("brands")
-    .select("name")
+    .select("name, status")
     .ilike("name", name.trim())
     .limit(1);
 
   if (existing && existing.length > 0) {
+    const isPending = existing[0].status === "pending";
     return NextResponse.json(
-      { error: `"${existing[0].name}" is already on the board! Search and boost/sabotage it instead.` },
-      { status: 409 }
+      {
+        error: isPending
+          ? `"${existing[0].name}" has already been submitted and is currently in review!`
+          : `"${existing[0].name}" is already on the board! Search and boost/sabotage it instead.`,
+      },
+      { status: 409, headers: rateLimitHeaders }
     );
   }
 
-  // Insert brand
+  // Insert brand with 'pending' status — will be reviewed first before appearing publicly
   const { error: brandError } = await supabase.from("brands").insert({
     id,
     name: name.trim(),
-    category: "Burgers",
+    category: category.trim(),
     total_score: initialScore,
     total_boosts: actionType === "BOOST" ? amount : 0,
     total_sabotages: actionType === "SABOTAGE" ? amount : 0,
-    current_slogan: message,
-    slogan_author: author,
-    clicks: 1,
+    current_slogan: message.trim(),
+    slogan_author: author.trim(),
+    clicks: 0,
     accent_color: accentColor || "#f59e0b",
+    status: "pending", // PENDING REVIEW
   });
 
   if (brandError) {
+    console.error("Supabase Brand Insert Error:", brandError);
     return NextResponse.json(
-      { error: "Failed to create brand." },
-      { status: 500 }
+      { error: "Failed to queue brand for review. Please try again." },
+      { status: 500, headers: rateLimitHeaders }
     );
   }
 
-  // Insert transaction
+  // Insert transaction with pending receipt
   await supabase.from("transactions").insert({
     brand_id: id,
     brand_name: name.trim(),
     action_type: actionType,
     amount,
-    message,
-    author,
+    message: message.trim(),
+    author: author.trim(),
     receipt_number: receiptNumber,
   });
 
-  return NextResponse.json({
-    success: true,
-    id,
-    receiptNumber,
-    mode: "demo",
-  });
+  return NextResponse.json(
+    {
+      success: true,
+      id,
+      receiptNumber,
+      status: "pending",
+      message:
+        "Chain submitted for review! Our team will verify it before it goes live on the official leaderboard.",
+    },
+    { headers: rateLimitHeaders }
+  );
 }

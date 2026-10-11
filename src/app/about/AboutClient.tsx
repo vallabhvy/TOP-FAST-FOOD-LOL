@@ -16,12 +16,15 @@ import {
   ChevronDown,
   ChevronUp,
   RotateCcw,
+  Plus,
 } from "lucide-react";
 import { sound } from "@/lib/sound";
+import { AddChainModal } from "@/components/AddChainModal";
 
 export default function AboutClient() {
   const [isMuted, setIsMuted] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(0); // first open by default
+  const [isAddChainOpen, setIsAddChainOpen] = useState(false);
 
   // Interactive Simulator state
   const [simBrand, setSimBrand] = useState("Pixel Burger Joint");
@@ -102,8 +105,9 @@ export default function AboutClient() {
     },
     {
       q: "What if my favorite fast food place is missing?",
-      a: "You can click 'Add Chain' directly on the home page! Type in the restaurant's name, pick their color and logo, and put them in the battle ring.",
+      a: "You can click '+ ADD A CHAIN' directly next to the search bar on the home page or click the button below! All submissions will be reviewed by our team first to prevent troll entries, duplicates, or spam before going live on the official leaderboard.",
       icon: "➕",
+      hasAddButton: true,
     },
   ];
 
@@ -406,7 +410,22 @@ export default function AboutClient() {
                   </button>
                   {isOpen && (
                     <div className="px-4 pb-4 pt-1 text-xs text-zinc-300 font-sans leading-relaxed border-t border-zinc-900 bg-zinc-900/20">
-                      {faq.a}
+                      <div>{faq.a}</div>
+                      {faq.hasAddButton && (
+                        <div className="pt-2.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              sound.playClick();
+                              setIsAddChainOpen(true);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 hover:border-emerald-400 text-emerald-300 font-mono text-xs font-bold transition-all cursor-pointer shadow-sm active:scale-95"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>+ PROPOSE A CHAIN FOR REVIEW</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -461,6 +480,11 @@ export default function AboutClient() {
           </div>
         </div>
       </footer>
+      {/* Propose Chain Modal */}
+      <AddChainModal
+        isOpen={isAddChainOpen}
+        onClose={() => setIsAddChainOpen(false)}
+      />
     </div>
   );
 }
