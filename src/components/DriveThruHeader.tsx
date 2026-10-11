@@ -47,10 +47,11 @@ export const DriveThruHeader: React.FC<HeaderProps> = ({
   const handleTwitterLogin = async () => {
     sound.playClick();
     if (!supabase) return;
+    const redirectUrl = typeof window !== "undefined" ? window.location.href : undefined;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "x" as any,
       options: {
-        redirectTo: window.location.origin,
+        redirectTo: redirectUrl,
       },
     });
     if (error) {
@@ -58,7 +59,7 @@ export const DriveThruHeader: React.FC<HeaderProps> = ({
       await supabase.auth.signInWithOAuth({
         provider: "twitter",
         options: {
-          redirectTo: window.location.origin,
+          redirectTo: redirectUrl,
         },
       });
     }

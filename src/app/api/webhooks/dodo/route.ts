@@ -24,23 +24,27 @@ export async function POST(req: Request) {
   const rawBody = await req.text();
 
   // Verify the signature
-  // Note: Adjust based on DodoPayments exact signature verification mechanism.
-  // Generally, it's an HMAC SHA256 of the payload.
   try {
     const expectedSignature = crypto
       .createHmac("sha256", webhookSecret)
       .update(rawBody)
       .digest("hex");
       
-    // Assuming signature header contains the raw hex, or v1=hex
-    const providedSignature = signatureHeader.replace("v1=", "");
+    // Handle standard hex or v1=hex format
+    const providedSignature = signatureHeader.replace(/^v1=/, "").trim();
     
-    if (expectedSignature !== providedSignature) {
-      // return NextResponse.json({ error: "Invalid signature." }, { status: 401 });
-      // In a real prod environment, you would strictly enforce this.
+    const expectedBuffer = Buffer.from(expectedSignature, "utf8");
+    const providedBuffer = Buffer.from(providedSignature, "utf8");
+
+    if (
+      expectedBuffer.length !== providedBuffer.length ||
+      !crypto.timingSafeEqual(expectedBuffer, providedBuffer)
+    ) {
+      return NextResponse.json({ error: "Invalid webhook signature." }, { status: 401 });
     }
   } catch (error) {
     console.error("Signature verification error:", error);
+    return NextResponse.json({ error: "Signature verification failed." }, { status: 401 });
   }
 
   // Parse the verified payload

@@ -348,15 +348,16 @@ export const DriveThruModal: React.FC<DriveThruModalProps> = ({
                     onClick={async () => {
                       sound.playClick();
                       if (!supabase) return;
+                      const redirectUrl = typeof window !== "undefined" ? window.location.href : undefined;
                       const { error } = await supabase.auth.signInWithOAuth({
                         provider: "x" as any,
-                        options: { redirectTo: window.location.origin },
+                        options: { redirectTo: redirectUrl },
                       });
                       if (error) {
                         console.warn("Fallback to legacy twitter provider:", error);
                         await supabase.auth.signInWithOAuth({
                           provider: "twitter",
-                          options: { redirectTo: window.location.origin },
+                          options: { redirectTo: redirectUrl },
                         });
                       }
                     }}
