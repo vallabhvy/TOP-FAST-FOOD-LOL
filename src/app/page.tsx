@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import confetti from "canvas-confetti";
-import { Search, PlusCircle, Plus, Flame, Skull, X, AlertTriangle } from "lucide-react";
+import { Search, PlusCircle, Plus, Flame, Skull, X, AlertTriangle, Lightbulb } from "lucide-react";
 import { FastFoodBrand, ActionType, Transaction, CRTColorTheme } from "@/types";
 import { INITIAL_BRANDS, INITIAL_TRANSACTIONS } from "@/lib/initialData";
 import { DriveThruHeader } from "@/components/DriveThruHeader";
@@ -10,6 +10,7 @@ import { BrandCard } from "@/components/BrandCard";
 import { DriveThruModal } from "@/components/DriveThruModal";
 import { ReceiptModal } from "@/components/ReceiptModal";
 import { AddChainModal } from "@/components/AddChainModal";
+import { FeedbackModal } from "@/components/FeedbackModal";
 import { LegalDisclaimer } from "@/components/LegalDisclaimer";
 import { UserAvatar } from "@/components/UserAvatar";
 import { sound } from "@/lib/sound";
@@ -47,6 +48,7 @@ export default function Home() {
 
   // Add Chain Modal State
   const [isAddChainOpen, setIsAddChainOpen] = useState(false);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [lastRank, setLastRank] = useState<number>(1);
 
   // Rate limiting state
@@ -352,17 +354,31 @@ export default function Home() {
             />
           </div>
 
-          <button
-            onClick={() => {
-              sound.playClick();
-              setIsAddChainOpen(true);
-            }}
-            className="px-3.5 py-2 rounded-lg bg-emerald-950/70 hover:bg-emerald-900 border border-emerald-500/50 hover:border-emerald-400 text-emerald-300 hover:text-white font-mono text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md shadow-emerald-950/40 active:scale-95 flex-shrink-0"
-            title="Propose a fast food chain to be added"
-          >
-            <Plus className="w-3.5 h-3.5 text-emerald-400" />
-            <span>+ ADD A CHAIN</span>
-          </button>
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            <button
+              onClick={() => {
+                sound.playClick();
+                setIsAddChainOpen(true);
+              }}
+              className="px-3.5 py-2 rounded-lg bg-emerald-950/70 hover:bg-emerald-900 border border-emerald-500/50 hover:border-emerald-400 text-emerald-300 hover:text-white font-mono text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md shadow-emerald-950/40 active:scale-95 flex-shrink-0"
+              title="Propose a fast food chain to be added"
+            >
+              <Plus className="w-3.5 h-3.5 text-emerald-400" />
+              <span>+ ADD A CHAIN</span>
+            </button>
+
+            <button
+              onClick={() => {
+                sound.playClick();
+                setIsFeedbackOpen(true);
+              }}
+              className="px-3 py-2 rounded-lg bg-zinc-900/90 hover:bg-zinc-800 border border-amber-500/40 hover:border-amber-400 text-amber-300 hover:text-white font-mono text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95 flex-shrink-0"
+              title="Suggest a feature or report a bug directly to the creator"
+            >
+              <Lightbulb className="w-3.5 h-3.5 text-amber-400" />
+              <span>BUGS / IDEAS</span>
+            </button>
+          </div>
         </div>
 
         {/* The Leaderboard Grid / Rows */}
@@ -477,6 +493,13 @@ export default function Home() {
       <AddChainModal
         isOpen={isAddChainOpen}
         onClose={() => setIsAddChainOpen(false)}
+        theme={theme}
+      />
+
+      {/* Feature Suggestion & Bug Report Modal */}
+      <FeedbackModal
+        isOpen={isFeedbackOpen}
+        onClose={() => setIsFeedbackOpen(false)}
         theme={theme}
       />
 

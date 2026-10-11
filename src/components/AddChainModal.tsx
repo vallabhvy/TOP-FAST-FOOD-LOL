@@ -153,7 +153,27 @@ export const AddChainModal: React.FC<AddChainModalProps> = ({
     sound.playClick();
 
     try {
-      const res = await fetch("/api/add-chain", {
+      // 1. Dispatch notification to Web3Forms inbox
+      const web3FormData = new FormData();
+      web3FormData.append("access_key", "f139beb4-ae4a-4838-8aba-d50af8577d88");
+      web3FormData.append("subject", `[TOPFASTFOOD Chain Suggestion] ${trimmedName}`);
+      web3FormData.append("from_name", "TOPFASTFOOD Chain Bot");
+      web3FormData.append("chain_name", trimmedName);
+      web3FormData.append("category", category);
+      web3FormData.append("initial_slogan", trimmedSlogan);
+      web3FormData.append("submitted_by", finalAuthor);
+      web3FormData.append("accent_color", accentColor);
+      web3FormData.append("submitted_at", new Date().toISOString());
+
+      const web3Promise = fetch("https://api.web3forms.com/submit", {
+        method: "POST",
+        body: web3FormData,
+      }).catch((err) => {
+        console.warn("Web3Forms transmission warning:", err);
+      });
+
+      // 2. Queue in backend database for review
+      const dbPromise = fetch("/api/add-chain", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -167,6 +187,7 @@ export const AddChainModal: React.FC<AddChainModalProps> = ({
         }),
       });
 
+      const [res] = await Promise.all([dbPromise, web3Promise]);
       const data = await res.json();
 
       if (!res.ok) {

@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Volume2, VolumeX, Scale, ShieldCheck, FileText } from "lucide-react";
+import { Volume2, VolumeX, Scale, ShieldCheck, FileText, Lightbulb } from "lucide-react";
 import { CRTColorTheme, Transaction } from "@/types";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { sound } from "@/lib/sound";
+import { FeedbackModal } from "@/components/FeedbackModal";
 
 interface HeaderProps {
   theme: CRTColorTheme;
@@ -19,6 +20,7 @@ export const DriveThruHeader: React.FC<HeaderProps> = ({
 }) => {
   const [isMuted, setIsMuted] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
 
   useEffect(() => {
     if (isSupabaseConfigured && supabase) {
@@ -169,8 +171,20 @@ export const DriveThruHeader: React.FC<HeaderProps> = ({
           </p>
         </div>
 
-        {/* Legal Policies Navigation */}
+        {/* Navigation & Tools */}
         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 self-start md:self-center">
+          <button
+            onClick={() => {
+              sound.playClick();
+              setIsFeedbackOpen(true);
+            }}
+            className="px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg border border-amber-500/40 bg-amber-950/40 hover:bg-amber-900/50 hover:border-amber-400 text-amber-300 hover:text-white transition-all font-mono text-[10px] sm:text-xs font-bold flex items-center gap-1 cursor-pointer shadow-sm active:scale-95"
+            title="Suggest a Feature or Report a Bug"
+          >
+            <Lightbulb className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400" />
+            <span>BUGS / IDEAS</span>
+          </button>
+
           <Link
             href="/disclaimer"
             onClick={() => sound.playClick()}
@@ -202,6 +216,13 @@ export const DriveThruHeader: React.FC<HeaderProps> = ({
           </Link>
         </div>
       </div>
+
+      {/* Feature & Bug Report Feedback Modal */}
+      <FeedbackModal
+        isOpen={isFeedbackOpen}
+        onClose={() => setIsFeedbackOpen(false)}
+        theme={theme}
+      />
     </header>
   );
 };

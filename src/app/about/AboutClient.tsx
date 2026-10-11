@@ -17,14 +17,17 @@ import {
   ChevronUp,
   RotateCcw,
   Plus,
+  Lightbulb,
 } from "lucide-react";
 import { sound } from "@/lib/sound";
 import { AddChainModal } from "@/components/AddChainModal";
+import { FeedbackModal } from "@/components/FeedbackModal";
 
 export default function AboutClient() {
   const [isMuted, setIsMuted] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(0); // first open by default
   const [isAddChainOpen, setIsAddChainOpen] = useState(false);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
 
   // Interactive Simulator state
   const [simBrand, setSimBrand] = useState("Pixel Burger Joint");
@@ -526,8 +529,20 @@ export default function AboutClient() {
                 <ExternalLink className="w-3.5 h-3.5 opacity-70 group-hover:opacity-100" />
               </a>
 
+              <button
+                type="button"
+                onClick={() => {
+                  sound.playClick();
+                  setIsFeedbackOpen(true);
+                }}
+                className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-amber-500/50 hover:border-amber-400 text-amber-300 hover:text-white font-mono text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer"
+              >
+                <Lightbulb className="w-3.5 h-3.5 text-amber-400" />
+                <span>SUGGEST FEATURE / REPORT BUG</span>
+              </button>
+
               <span className="text-[10px] text-zinc-500 text-center font-mono">
-                Questions or feedback? DMs are open!
+                Questions or feedback? Beams directly to Vallabh&apos;s inbox!
               </span>
             </div>
           </div>
@@ -604,6 +619,12 @@ export default function AboutClient() {
       <AddChainModal
         isOpen={isAddChainOpen}
         onClose={() => setIsAddChainOpen(false)}
+      />
+
+      {/* Feature Suggestion & Bug Report Modal */}
+      <FeedbackModal
+        isOpen={isFeedbackOpen}
+        onClose={() => setIsFeedbackOpen(false)}
       />
     </div>
   );
