@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { Volume2, VolumeX, Flame, Skull } from "lucide-react";
 import { CRTColorTheme, Transaction } from "@/types";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -117,6 +118,16 @@ export const DriveThruHeader: React.FC<HeaderProps> = ({
                 <Volume2 className="w-5 h-5 text-emerald-400" />
               )}
             </button>
+
+            {/* About Page Link */}
+            <Link
+              href="/about"
+              onClick={() => sound.playClick()}
+              className="p-1.5 sm:px-2.5 sm:py-2 rounded border border-zinc-800 bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 hover:text-emerald-400 transition-all cursor-pointer flex items-center justify-center text-xs font-mono font-bold"
+              title="What is this site? About TOPFASTFOOD.LOL"
+            >
+              ABOUT [?]
+            </Link>
 
             {/* Login / User Info Button */}
             {user ? (

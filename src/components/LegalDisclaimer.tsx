@@ -66,13 +66,23 @@ export const LegalDisclaimer: React.FC<LegalDisclaimerProps> = ({ theme }) => {
           </div>
         )}
 
-        {/* Copyright notice */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-[10px] text-zinc-600">
-          <div>
-            © {new Date().getFullYear()} TOPFASTFOOD.LOL • The Petty Drive-Thru Turf War • All rights reserved.
+        {/* Footer Navigation & Copyright notice */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] pt-2 border-t border-zinc-900/60">
+          <div className="flex items-center gap-4 text-zinc-400">
+            <a href="/" className="hover:text-emerald-400 transition-colors">
+              Leaderboard
+            </a>
+            <span>•</span>
+            <a href="/about" className="hover:text-emerald-400 transition-colors text-zinc-300 font-bold">
+              What is this? (About)
+            </a>
+            <span>•</span>
+            <a href="/sitemap.xml" className="hover:text-zinc-200 transition-colors text-zinc-500">
+              Sitemap
+            </a>
           </div>
-          <div>
-            Zero food critics were consulted in the creation of this leaderboard.
+          <div className="text-[10px] text-zinc-600 text-center sm:text-right">
+            © {new Date().getFullYear()} TOPFASTFOOD.LOL • The Petty Drive-Thru Turf War • Zero food critics consulted.
           </div>
         </div>
       </div>
