@@ -22,17 +22,6 @@ interface AddChainModalProps {
   currentUserHandle?: string;
 }
 
-const CATEGORIES = [
-  "Burgers",
-  "Chicken",
-  "Mexican",
-  "Pizza",
-  "Sandwiches",
-  "Late Night",
-  "Desserts",
-  "Coffee",
-];
-
 const ACCENT_COLORS = [
   { name: "Golden Amber", hex: "#f59e0b" },
   { name: "Crimson Red", hex: "#ef4444" },
@@ -48,7 +37,7 @@ export const AddChainModal: React.FC<AddChainModalProps> = ({
   currentUserHandle = "",
 }) => {
   const [name, setName] = useState("");
-  const [category, setCategory] = useState("Burgers");
+  const category = "Fast Food";
   const [slogan, setSlogan] = useState("");
   const [author, setAuthor] = useState("");
   const [accentColor, setAccentColor] = useState(ACCENT_COLORS[0].hex);
@@ -318,31 +307,6 @@ export const AddChainModal: React.FC<AddChainModalProps> = ({
               />
             </div>
 
-            {/* Category Selection */}
-            <div className="space-y-1">
-              <label className="text-[11px] text-zinc-400 font-bold uppercase tracking-wider">
-                Category
-              </label>
-              <div className="flex flex-wrap gap-1.5">
-                {CATEGORIES.map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => {
-                      sound.playClick();
-                      setCategory(cat);
-                    }}
-                    className={`px-2.5 py-1 rounded text-[10px] font-mono transition-colors cursor-pointer border ${
-                      category === cat
-                        ? "bg-emerald-950 text-emerald-300 border-emerald-500"
-                        : "bg-zinc-900/80 text-zinc-400 border-zinc-800 hover:border-zinc-700"
-                    }`}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
-            </div>
 
             {/* Initial Slogan or Roast */}
             <div className="space-y-1">
