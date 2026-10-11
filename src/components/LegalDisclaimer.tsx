@@ -68,13 +68,21 @@ export const LegalDisclaimer: React.FC<LegalDisclaimerProps> = ({ theme }) => {
 
         {/* Footer Navigation & Copyright notice */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] pt-2 border-t border-zinc-900/60">
-          <div className="flex items-center gap-3 text-zinc-400">
+          <div className="flex flex-wrap items-center gap-3 text-zinc-400">
             <a href="/" className="hover:text-emerald-400 transition-colors">
               Leaderboard
             </a>
             <span>•</span>
             <a href="/about" className="hover:text-emerald-400 transition-colors text-zinc-300 font-bold">
-              What is this? (About)
+              About
+            </a>
+            <span>•</span>
+            <a href="/terms" className="hover:text-emerald-400 transition-colors">
+              Terms &amp; Conditions
+            </a>
+            <span>•</span>
+            <a href="/privacy" className="hover:text-emerald-400 transition-colors">
+              Privacy Policy
             </a>
           </div>
           <div className="text-[10px] text-zinc-600 text-center sm:text-right">

@@ -2,24 +2,22 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Volume2, VolumeX, Flame, Skull } from "lucide-react";
+import { Volume2, VolumeX, Scale, ShieldCheck } from "lucide-react";
 import { CRTColorTheme, Transaction } from "@/types";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { sound } from "@/lib/sound";
 
 interface HeaderProps {
   theme: CRTColorTheme;
-  recentTransactions: Transaction[];
+  recentTransactions?: Transaction[];
   setTheme?: (t: CRTColorTheme) => void;
   totalWarchest?: number;
 }
 
 export const DriveThruHeader: React.FC<HeaderProps> = ({
   theme,
-  recentTransactions,
 }) => {
   const [isMuted, setIsMuted] = useState(false);
-  const [activeTxIndex, setActiveTxIndex] = useState(0);
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
@@ -35,13 +33,7 @@ export const DriveThruHeader: React.FC<HeaderProps> = ({
     }
   }, []);
 
-  useEffect(() => {
-    if (recentTransactions.length <= 1) return;
-    const tickerInterval = setInterval(() => {
-      setActiveTxIndex((prev) => (prev + 1) % recentTransactions.length);
-    }, 4500);
-    return () => clearInterval(tickerInterval);
-  }, [recentTransactions.length]);
+
 
   const toggleMute = () => {
     const nextMuted = !isMuted;
@@ -84,7 +76,7 @@ export const DriveThruHeader: React.FC<HeaderProps> = ({
     : "glow-amber text-[#ffb000]";
   const borderClass = isGreen ? "border-[#39ff14]/30" : "border-[#ffb000]/30";
 
-  const currentTx = recentTransactions[activeTxIndex] || recentTransactions[0];
+
 
   return (
     <header
@@ -136,7 +128,10 @@ export const DriveThruHeader: React.FC<HeaderProps> = ({
                 title="Sign out"
                 className="p-1.5 sm:p-2 rounded border border-sky-900/50 bg-sky-950/30 text-sky-400 hover:text-white hover:bg-rose-950/30 hover:border-rose-900/50 transition-all cursor-pointer flex items-center justify-center text-xs font-mono font-bold"
               >
-                @{user.user_metadata?.user_name || user.user_metadata?.preferred_username || "user"}
+                @
+                {user.user_metadata?.user_name ||
+                  user.user_metadata?.preferred_username ||
+                  "user"}
               </button>
             ) : (
               <button
@@ -161,46 +156,28 @@ export const DriveThruHeader: React.FC<HeaderProps> = ({
           </p>
         </div>
 
-        {/* Live Intercom Order Feed Ticket */}
-        {currentTx && (
-          <div
-            className={`bg-zinc-950/90 border ${
-              currentTx.actionType === "BOOST"
-                ? "border-emerald-500/40"
-                : "border-rose-500/40"
-            } p-3 rounded-lg max-w-md w-full shadow-lg relative overflow-hidden transition-all duration-300`}
+        {/* Legal Policies Navigation */}
+        <div className="flex items-center gap-2 self-start md:self-center">
+          <Link
+            href="/terms"
+            onClick={() => sound.playClick()}
+            className="px-3 py-1.5 rounded-lg border border-zinc-800 bg-zinc-950/80 hover:bg-zinc-900 hover:border-emerald-500/50 text-zinc-400 hover:text-emerald-400 transition-all font-mono text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+            title="Terms & Conditions"
           >
-            <div className="flex items-center justify-between text-[11px] mb-1">
-              <span className="font-bold flex items-center gap-1">
-                {currentTx.actionType === "BOOST" ? (
-                  <span className="text-emerald-400 flex items-center gap-1">
-                    <Flame className="w-3.5 h-3.5 fill-emerald-400" /> RECENT
-                    BOOST (+${currentTx.amount})
-                  </span>
-                ) : (
-                  <span className="text-rose-400 flex items-center gap-1">
-                    <Skull className="w-3.5 h-3.5" /> RECENT SABOTAGE (-$
-                    {currentTx.amount})
-                  </span>
-                )}
-              </span>
-              <span className="text-zinc-500">{currentTx.receiptNumber}</span>
-            </div>
-            <p className="text-xs text-white font-mono truncate">
-              <span className="font-bold text-amber-300">
-                {currentTx.brandName}:
-              </span>{" "}
-              &quot;{currentTx.message}&quot;
-            </p>
-            <div className="text-[10px] text-zinc-500 mt-1 flex justify-between">
-              <span className="truncate pr-2">
-                By {currentTx.author}{" "}
-                {currentTx.location ? `[${currentTx.location}]` : ""}
-              </span>
-              <span className="flex-shrink-0">{currentTx.timestamp}</span>
-            </div>
-          </div>
-        )}
+            <Scale className="w-3.5 h-3.5 text-zinc-500" />
+            <span>TERMS</span>
+          </Link>
+
+          <Link
+            href="/privacy"
+            onClick={() => sound.playClick()}
+            className="px-3 py-1.5 rounded-lg border border-zinc-800 bg-zinc-950/80 hover:bg-zinc-900 hover:border-emerald-500/50 text-zinc-400 hover:text-emerald-400 transition-all font-mono text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+            title="Privacy Policy"
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-zinc-500" />
+            <span>PRIVACY</span>
+          </Link>
+        </div>
       </div>
     </header>
   );
