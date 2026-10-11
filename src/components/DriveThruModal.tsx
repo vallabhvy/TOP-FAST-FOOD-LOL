@@ -348,7 +348,10 @@ export const DriveThruModal: React.FC<DriveThruModalProps> = ({
                     onClick={async () => {
                       sound.playClick();
                       if (!supabase) return;
-                      const redirectUrl = typeof window !== "undefined" ? window.location.href : undefined;
+                      const redirectUrl =
+                        typeof window !== "undefined"
+                          ? window.location.origin + window.location.pathname
+                          : undefined;
                       const { error } = await supabase.auth.signInWithOAuth({
                         provider: "x" as any,
                         options: { redirectTo: redirectUrl },
