@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { Webhook } from "standardwebhooks";
 import crypto from "crypto";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
-const webhookSecret = process.env.DODO_WEBHOOK_SECRET || "";
+const webhookSecret =
+  process.env.DODO_WEBHOOK_SECRET ||
+  process.env.DODO_PAYMENTS_WEBHOOK_SECRET ||
+  "";
 
 function getServerSupabase() {
   if (!supabaseUrl || !supabaseServiceKey) return null;
@@ -13,38 +17,65 @@ function getServerSupabase() {
 
 export async function POST(req: Request) {
   if (!webhookSecret) {
-    return NextResponse.json({ error: "Webhook secret not configured." }, { status: 500 });
-  }
-
-  const signatureHeader = req.headers.get("webhook-signature");
-  if (!signatureHeader) {
-    return NextResponse.json({ error: "Missing signature." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Webhook secret not configured." },
+      { status: 500 }
+    );
   }
 
   const rawBody = await req.text();
 
-  // Verify the signature
-  try {
-    const expectedSignature = crypto
-      .createHmac("sha256", webhookSecret)
-      .update(rawBody)
-      .digest("hex");
-      
-    // Handle standard hex or v1=hex format
-    const providedSignature = signatureHeader.replace(/^v1=/, "").trim();
-    
-    const expectedBuffer = Buffer.from(expectedSignature, "utf8");
-    const providedBuffer = Buffer.from(providedSignature, "utf8");
+  // 1. Verify webhook signature
+  let isVerified = false;
+  const headerMap: Record<string, string> = {};
+  req.headers.forEach((val, key) => {
+    headerMap[key.toLowerCase()] = val;
+  });
 
-    if (
-      expectedBuffer.length !== providedBuffer.length ||
-      !crypto.timingSafeEqual(expectedBuffer, providedBuffer)
-    ) {
-      return NextResponse.json({ error: "Invalid webhook signature." }, { status: 401 });
+  const webhookId = headerMap["webhook-id"] || headerMap["svix-id"];
+  const webhookTimestamp =
+    headerMap["webhook-timestamp"] || headerMap["svix-timestamp"];
+  const signatureHeader =
+    headerMap["webhook-signature"] || headerMap["svix-signature"];
+
+  if (webhookId && webhookTimestamp && signatureHeader) {
+    try {
+      const wh = new Webhook(webhookSecret);
+      wh.verify(rawBody, headerMap);
+      isVerified = true;
+    } catch (err) {
+      console.warn("StandardWebhooks verification failed, attempting fallback:", err);
     }
-  } catch (error) {
-    console.error("Signature verification error:", error);
-    return NextResponse.json({ error: "Signature verification failed." }, { status: 401 });
+  }
+
+  if (!isVerified && signatureHeader) {
+    // Fallback: direct HMAC sha256 check
+    try {
+      const sig = signatureHeader.replace(/^v1=/, "").trim();
+      const expectedSignature = crypto
+        .createHmac("sha256", webhookSecret)
+        .update(rawBody)
+        .digest("hex");
+
+      const expectedBuffer = Buffer.from(expectedSignature, "utf8");
+      const providedBuffer = Buffer.from(sig, "utf8");
+
+      if (
+        expectedBuffer.length === providedBuffer.length &&
+        crypto.timingSafeEqual(expectedBuffer, providedBuffer)
+      ) {
+        isVerified = true;
+      }
+    } catch (e) {
+      console.error("HMAC fallback error:", e);
+    }
+  }
+
+  if (!isVerified) {
+    return NextResponse.json(
+      { error: "Invalid webhook signature." },
+      { status: 401 }
+    );
   }
 
   // Parse the verified payload

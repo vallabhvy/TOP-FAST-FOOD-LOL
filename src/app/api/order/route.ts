@@ -150,7 +150,14 @@ export async function POST(req: Request) {
     // SECURE FLOW: Real Money via DodoPayments
     try {
       const DodoPayments = (await import("dodopayments")).default;
-      const dodo = new DodoPayments({ bearerToken: dodoKey });
+      const isTestMode =
+        process.env.DODO_PAYMENTS_ENVIRONMENT === "test_mode" ||
+        dodoKey.startsWith("test_");
+
+      const dodo = new DodoPayments({
+        bearerToken: dodoKey,
+        environment: isTestMode ? "test_mode" : "live_mode",
+      });
 
       // Build metadata to pass to the webhook later
       const metadata = {
@@ -160,40 +167,47 @@ export async function POST(req: Request) {
         message,
         author,
         location: location || "",
-        type: "order"
+        type: "order",
       };
 
       // Ensure base URL exists for redirects
-      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || req.headers.get("origin") || "http://localhost:3000";
+      const baseUrl =
+        process.env.NEXT_PUBLIC_SITE_URL ||
+        req.headers.get("origin") ||
+        "http://localhost:3000";
+
+      const productId = process.env.DODO_PRODUCT_ID || "default_product_id";
+
+      // Prepare customer details (valid email required by Dodo customer API)
+      const sanitizedAuthor =
+        author.replace(/[^a-zA-Z0-9]/g, "").toLowerCase() || "fan";
+      const customerEmail = `${sanitizedAuthor}@topfastfood.lol`;
 
       const payment = await dodo.payments.create({
         billing: {
-          city: "",
-          country: "US", // Default to US, user can change
-          state: "",
-          street: "",
-          zipcode: "",
+          country: "US", // Default to US, customer can change at checkout
         },
         customer: {
-          email: "",
+          email: customerEmail,
           name: author,
         },
         product_cart: [
           {
-            product_id: "default_product_id", // Requires a valid ID, use a dummy or predefined one
+            product_id: productId,
             quantity: 1,
-            amount: amount * 100, // Assuming amount is in dollars, convert to cents if API requires it
+            amount: amount * 100, // Amount in cents ($1 = 100 cents)
           },
         ],
+        payment_link: true, // Generate hosted checkout payment link
         return_url: `${baseUrl}?payment=success`,
         metadata,
       });
 
-      // The frontend must now redirect the user to this link to pay
+      // The frontend redirects the user to this link to pay
       return NextResponse.json({
         success: true,
-        paymentLink: payment.payment_link || "", // URL where the user enters card details
-        mode: "live",
+        paymentLink: payment.payment_link || "",
+        mode: isTestMode ? "test" : "live",
       });
     } catch (error) {
       console.error("DodoPayments Error:", error);
