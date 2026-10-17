@@ -4,429 +4,269 @@ import React, { useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
-  Flame,
-  Skull,
-  Receipt,
-  HelpCircle,
-  Sparkles,
-  Trophy,
-  ExternalLink,
   ChevronDown,
   ChevronUp,
   RotateCcw,
-  Plus,
-  Lightbulb,
 } from "lucide-react";
 import { sound } from "@/lib/sound";
 import { AddChainModal } from "@/components/AddChainModal";
 import { FeedbackModal } from "@/components/FeedbackModal";
+import { DriveThruFooter } from "@/components/DriveThruFooter";
 
 export default function AboutClient() {
-  const [openFaq, setOpenFaq] = useState<number | null>(0); // first open by default
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [isAddChainOpen, setIsAddChainOpen] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
 
-  // Interactive Simulator state
-  const [simBrand, setSimBrand] = useState("Pixel Burger Joint");
-  const [simScore, setSimScore] = useState(120);
+  // Interactive Simulator state (Fixed to $1 per review F8)
+  const [simScore, setSimScore] = useState(12);
   const [simRank, setSimRank] = useState(2);
   const [simLog, setSimLog] = useState<string>(
-    "Click BOOST or SABOTAGE to test the controls!",
+    "Tap ▲ Boost $1 or ▼ Sabotage $1 to test the controls."
   );
-  const [simLastAction, setSimLastAction] = useState<
-    "BOOST" | "SABOTAGE" | null
-  >(null);
-
 
   const handleSimBoost = () => {
     sound.playCashRegister();
-    setSimScore((s) => s + 5);
+    setSimScore((s) => s + 1);
     setSimRank(1);
-    setSimLastAction("BOOST");
-    setSimLog("🔥 +$5 BOOST! Pixel Burger surged up to Rank #1!");
+    setSimLog("▲ +$1 Boosted! Pixel Burger gained +1 point and moved to #1.");
   };
 
   const handleSimSabotage = () => {
     sound.playSabotageBuzzer();
-    setSimScore((s) => Math.max(0, s - 5));
+    setSimScore((s) => s - 1);
     setSimRank(3);
-    setSimLastAction("SABOTAGE");
-    setSimLog(
-      "💀 -$5 SABOTAGE! Someone called the fries cold! Dropped to Rank #3!",
-    );
+    setSimLog("▼ -$1 Sabotaged! Pixel Burger lost 1 point and dropped to #3.");
   };
 
   const resetSim = () => {
     sound.playClick();
-    setSimScore(120);
+    setSimScore(12);
     setSimRank(2);
-    setSimLastAction(null);
-    setSimLog("Simulator reset. Ready for your order!");
+    setSimLog("Simulator reset. Ready for your test vote.");
   };
 
   interface FaqItem {
     q: string;
     a: string;
-    icon: string;
     hasAddButton?: boolean;
-    hasCreatorLink?: boolean;
   }
 
   const faqs: FaqItem[] = [
     {
       q: "Will actual food arrive at my house if I use this site?",
-      a: "Nope! No scooters or delivery bags are coming to your door. TOPFASTFOOD.LOL is a live gaming scoreboard and comedy poll. It's built for bragging rights and defending your favorite snacks. If you're actually hungry, you'll still need to visit a real drive-thru!",
-      icon: "🚗",
+      a: "No. topfastfood.lol is a live community ranking and fan debate tool settled with small tips. If you're hungry, you'll still need to visit a real drive-thru window.",
     },
     {
-      q: "Why are people boosting and sabotaging restaurants?",
-      a: "Because arguing about who makes the best French fries is one of the most intense debates on earth! Instead of just arguing in comment sections, this site gives you a live scoreboard where fans can push their favorite chain to #1 or push their rival down.",
-      icon: "🍟",
+      q: "How does the ranking work?",
+      a: "$1 pushes your chain up a point (Boost). $1 pushes a rival down one point (Sabotage). The chain with the most points holds the #1 crown.",
     },
     {
-      q: "What does 'Boost' and 'Sabotage' mean?",
-      a: "Think of it like a video game health bar: BOOST (+) gives points to a restaurant so it climbs higher on the leaderboard. SABOTAGE (-) takes points away from a restaurant to drop its rank. The restaurant with the highest score sits proudly at #1.",
-      icon: "⚡",
+      q: "What does the top backer get?",
+      a: "When you boost a chain, your message and handle get pinned under the chain's name on the leaderboard as its top backer for everyone to see.",
     },
     {
-      q: "What is the 'Intercom Message' and 'Receipt'?",
-      a: "Whenever you boost or sabotage, you get to speak into the virtual 'Drive-Thru Speaker' and leave a message (like 'Extra crispy fries forever!' or 'Your milkshake machine never works!'). The system then prints out a greasy retro pixel-art receipt that you can save or post on Twitter/X to flex your victory.",
-      icon: "🧾",
+      q: "What is the receipt?",
+      a: "Every payment generates a drive-thru thermal receipt showing your order number, points change, and message. You can copy it, save it, or share it on X to recruit your friends or bait your rivals.",
     },
     {
-      q: "Can I use the site for free?",
-      a: "YES! Browsing the live leaderboard, reading the hilarious roast messages, inspecting restaurant battle stats, and listening to the retro diner arcade audio is 100% free.",
-      icon: "🎉",
+      q: "Where does the money go?",
+      a: "Payments are micro-tips that go directly to the site's creator to pay for server costs, database infrastructure, and hosting — not the restaurant corporations.",
     },
     {
-      q: "How do I log in with Twitter / X?",
-      a: "Just click the 'LOGIN' button at the top of the page. It connects with your X account so your actual username and avatar appear on your receipts and intercom messages instead of being anonymous.",
-      icon: "🐦",
+      q: "Do I have to log in to vote?",
+      a: "No! Guest checkout is fully supported. You can enter any display name or remain Anonymous. If you log in with your X account, your verified @handle is attached to your receipt and pinned message.",
     },
     {
-      q: "What if my favorite fast food place is missing?",
-      a: "You can click '+ ADD A CHAIN' directly next to the search bar on the home page or click the button below! All submissions will be reviewed by our team first to prevent troll entries, duplicates, or spam before going live on the official leaderboard.",
-      icon: "➕",
+      q: "What if my favourite restaurant is missing?",
+      a: "You can suggest a chain by tapping 'Suggest one' on the leaderboard or clicking the button below. All submissions are reviewed to prevent duplicates before going live.",
       hasAddButton: true,
     },
   ];
 
   return (
-    <div className="min-h-screen crt-screen text-zinc-100 flex flex-col font-mono relative selection:bg-emerald-500 selection:text-black">
-      {/* Scanline overlay */}
-      <div className="fixed inset-0 scanlines pointer-events-none z-40 opacity-75" />
-
-      {/* Retro Navigation Header */}
-      <header className="border-b border-[#39ff14]/30 bg-black/85 backdrop-blur-md sticky top-0 z-30">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+    <div className="min-h-screen bg-[#F6F7F3] text-[#1E2A3A] flex flex-col font-sans selection:bg-[#167A75] selection:text-white">
+      {/* Header */}
+      <header className="border-b border-[#E2E4DC] bg-[#FFFFFF] sticky top-0 z-30">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
           <Link
             href="/"
-            onClick={() => sound.playClick()}
             className="flex items-center gap-2 group cursor-pointer"
           >
             <img
               src="/logo.jpg"
-              alt="TOPFASTFOOD.LOL Logo"
-              className="w-10 h-10 object-contain rounded border border-zinc-800 group-hover:border-emerald-400 transition-colors"
+              alt="topfastfood.lol logo"
+              className="w-7 h-7 sm:w-8 sm:h-8 object-cover rounded-md border border-[#E2E4DC]"
             />
-            <div className="flex flex-col">
-              <span className="text-xl font-extrabold tracking-tighter text-[#39ff14] glow-green font-mono leading-none">
-                TOPFASTFOOD<span className="text-white">.LOL</span>
-              </span>
-              <span className="text-[10px] text-zinc-500 tracking-wider">
-                DRIVE-THRU TURF WAR
-              </span>
-            </div>
+            <span className="text-lg sm:text-xl font-bold tracking-tight text-[#1E2A3A] group-hover:text-[#167A75] transition-colors">
+              topfastfood<span className="text-[#167A75]">.lol</span>
+            </span>
           </Link>
 
-          <div className="flex items-center gap-3">
-
-            <Link
-              href="/"
-              onClick={() => sound.playClick()}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-zinc-900 hover:bg-zinc-800 text-xs text-emerald-400 hover:text-emerald-300 border border-emerald-500/30 transition-all font-bold cursor-pointer"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>BACK TO LEADERBOARD</span>
-            </Link>
-          </div>
+          <Link
+            href="/"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#CBD2C4] hover:bg-[#EEF0EA] text-xs sm:text-sm font-medium text-[#1E2A3A] transition-colors"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Back to ranking</span>
+          </Link>
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <main className="max-w-5xl mx-auto px-4 py-10 flex-1 w-full space-y-12 relative z-10">
-        {/* Hero Section */}
-        <div className="text-center space-y-4 max-w-3xl mx-auto">
-          <h1 className="text-3xl sm:text-5xl font-extrabold uppercase tracking-tight text-white glow-green">
-            WHAT IS <span className="text-[#39ff14]">TOPFASTFOOD.LOL</span>?
+      {/* Main Content */}
+      <main className="max-w-3xl mx-auto px-4 py-8 sm:py-12 flex-1 w-full space-y-10">
+        {/* Intro */}
+        <section className="space-y-3">
+          <h1 className="text-2xl sm:text-4xl font-extrabold text-[#1E2A3A] tracking-tight">
+            How it works
           </h1>
-
-          <p className="text-sm sm:text-base text-zinc-300 leading-relaxed font-sans">
-            Imagine an online video game arcade where every fast food restaurant
-            in the world is thrown into a giant wrestling arena. There are{" "}
-            <strong>zero food critics in fancy suits</strong>, and{" "}
-            <strong>no fake reviews</strong>. Instead, real people use quick
-            votes and micro-tips to decide who wears the{" "}
-            <strong>#1 crown</strong>!
+          <p className="text-base text-[#5A6878] leading-relaxed">
+            The internet&apos;s fast food ranking, settled in dollars. No critics, no sponsored reviews, no corporate PR. Fans vote with $1 micro-tips to crown their favourite drive-thru or roast their rivals.
           </p>
-        </div>
+        </section>
 
-        {/* 4 Super Simple Steps Card Grid */}
+        {/* The Core Mechanics in 3 Steps */}
         <section className="space-y-4">
-          <div className="flex items-center gap-2 border-b border-zinc-800 pb-2">
-            <Trophy className="w-5 h-5 text-amber-400" />
-            <h2 className="text-lg font-bold text-white uppercase tracking-wider">
-              HOW THE GAME WORKS IN 4 EASY STEPS
-            </h2>
-          </div>
+          <h2 className="text-lg font-bold text-[#1E2A3A]">
+            Three simple rules
+          </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Step 1 */}
-            <div className="bg-zinc-950/90 border border-zinc-800 hover:border-emerald-500/40 p-5 rounded-lg transition-all space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs px-2 py-0.5 rounded bg-zinc-900 border border-zinc-700 text-amber-400 font-bold">
-                  STEP 01
-                </span>
-                <span className="text-2xl">🍔</span>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-[#FFFFFF] border border-[#E2E4DC] p-4 rounded-xl space-y-2 shadow-2xs">
+              <div className="w-7 h-7 rounded-md bg-[#3B7A1F]/10 text-[#3B7A1F] font-bold text-xs flex items-center justify-center">
+                ▲
               </div>
-              <h3 className="text-base font-bold text-white">
-                Pick Your Fast Food Champion
-              </h3>
-              <p className="text-xs text-zinc-400 font-sans leading-relaxed">
-                Are you loyal to McDonald&apos;s salty fries, Wendy&apos;s spicy
-                nuggets, Taco Bell&apos;s late-night burritos, or Chick-fil-A?
-                Find your favorite restaurant on the live ranking board.
+              <h3 className="font-bold text-sm text-[#1E2A3A]">1. Boost $1</h3>
+              <p className="text-xs text-[#5A6878] leading-relaxed">
+                Adds 1 point to your chain and moves it up the board. Attach a message to claim the top-backer slot.
               </p>
             </div>
 
-            {/* Step 2 */}
-            <div className="bg-zinc-950/90 border border-zinc-800 hover:border-emerald-500/40 p-5 rounded-lg transition-all space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs px-2 py-0.5 rounded bg-zinc-900 border border-zinc-700 text-emerald-400 font-bold">
-                  STEP 02
-                </span>
-                <span className="text-2xl">⚡</span>
+            <div className="bg-[#FFFFFF] border border-[#E2E4DC] p-4 rounded-xl space-y-2 shadow-2xs">
+              <div className="w-7 h-7 rounded-md bg-[#B82E22]/10 text-[#B82E22] font-bold text-xs flex items-center justify-center">
+                ▼
               </div>
-              <h3 className="text-base font-bold text-white">
-                Boost It (+) OR Sabotage It (-)
-              </h3>
-              <p className="text-xs text-zinc-400 font-sans leading-relaxed">
-                <span className="text-emerald-400 font-bold">BOOST (+)</span>{" "}
-                gives your chain points to launch it up toward #1.
-                <br />
-                <span className="text-rose-400 font-bold">
-                  SABOTAGE (-)
-                </span>{" "}
-                takes points away from a rival to pull them down the
-                leaderboard!
+              <h3 className="font-bold text-sm text-[#1E2A3A]">2. Sabotage $1</h3>
+              <p className="text-xs text-[#5A6878] leading-relaxed">
+                Removes 1 point from a rival chain to drag them down. Attach your roast to their activity log.
               </p>
             </div>
 
-            {/* Step 3 */}
-            <div className="bg-zinc-950/90 border border-zinc-800 hover:border-emerald-500/40 p-5 rounded-lg transition-all space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs px-2 py-0.5 rounded bg-zinc-900 border border-zinc-700 text-sky-400 font-bold">
-                  STEP 03
-                </span>
-                <span className="text-2xl">📢</span>
+            <div className="bg-[#FFFFFF] border border-[#E2E4DC] p-4 rounded-xl space-y-2 shadow-2xs">
+              <div className="w-7 h-7 rounded-md bg-[#167A75]/10 text-[#167A75] font-bold text-xs flex items-center justify-center">
+                🧾
               </div>
-              <h3 className="text-base font-bold text-white">
-                Shout Into the Drive-Thru Speaker
-              </h3>
-              <p className="text-xs text-zinc-400 font-sans leading-relaxed">
-                Whenever you order, type a funny note or roast. It broadcasts
-                across the top of the website on the live intercom ticker for
-                everyone on the internet to see.
-              </p>
-            </div>
-
-            {/* Step 4 */}
-            <div className="bg-zinc-950/90 border border-zinc-800 hover:border-emerald-500/40 p-5 rounded-lg transition-all space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs px-2 py-0.5 rounded bg-zinc-900 border border-zinc-700 text-purple-400 font-bold">
-                  STEP 04
-                </span>
-                <span className="text-2xl">🧾</span>
-              </div>
-              <h3 className="text-base font-bold text-white">
-                Get Your Greasy Digital Receipt
-              </h3>
-              <p className="text-xs text-zinc-400 font-sans leading-relaxed">
-                The virtual retro thermal printer spits out an official
-                pixel-art receipt with your rank, order number, and roast. You
-                can download it or share it on X!
+              <h3 className="font-bold text-sm text-[#1E2A3A]">3. Share the receipt</h3>
+              <p className="text-xs text-[#5A6878] leading-relaxed">
+                Get a thermal drive-thru receipt for every order. Share the link on X so your friends or rivals can respond.
               </p>
             </div>
           </div>
         </section>
 
-        {/* Interactive Try-It-Now Simulator Sandbox */}
-        <section className="bg-zinc-950 border-2 border-dashed border-[#39ff14]/30 rounded-xl p-6 sm:p-8 space-y-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-zinc-800 pb-4">
+        {/* Interactive Simulator (Section F8: Fixed to $1 matching live site) */}
+        <section className="bg-[#FFFFFF] border border-[#E2E4DC] rounded-xl p-5 sm:p-6 space-y-4 shadow-2xs">
+          <div className="flex items-center justify-between">
             <div>
-              <span className="text-xs text-emerald-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5" /> INTERACTIVE TEST SIMULATOR
-              </span>
-              <h3 className="text-xl font-bold text-white uppercase mt-0.5">
-                TRY THE CONTROLS YOURSELF
-              </h3>
+              <h2 className="text-base font-bold text-[#1E2A3A]">
+                Try the controls
+              </h2>
+              <p className="text-xs text-[#5A6878]">
+                Interactive demo — tests the ranking mechanics with zero real charges.
+              </p>
             </div>
             <button
               onClick={resetSim}
-              className="text-xs text-zinc-500 hover:text-zinc-300 flex items-center gap-1 cursor-pointer transition-colors"
+              className="text-xs text-[#5A6878] hover:text-[#1E2A3A] flex items-center gap-1 cursor-pointer"
             >
-              <RotateCcw className="w-3 h-3" /> Reset Simulator
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Reset</span>
             </button>
           </div>
 
-          <p className="text-xs text-zinc-400 font-sans">
-            Try clicking the <strong>BOOST</strong> and{" "}
-            <strong>SABOTAGE</strong> buttons below to see how points and ranks
-            update in real time:
-          </p>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-            {/* Mock Chain Card */}
-            <div className="md:col-span-2 bg-black border border-zinc-800 p-4 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-3 w-full sm:w-auto">
-                <div
-                  className={`w-10 h-10 rounded flex items-center justify-center font-bold text-base transition-colors ${
-                    simRank === 1
-                      ? "bg-amber-400 text-black border border-amber-300 shadow-md shadow-amber-500/20"
-                      : "bg-zinc-900 text-zinc-400 border border-zinc-700"
-                  }`}
-                >
-                  #{simRank}
+          {/* Simulator Display Card */}
+          <div className="bg-[#F6F7F3] border border-[#E2E4DC] rounded-lg p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-md bg-[#FFFFFF] border border-[#CBD2C4] flex items-center justify-center text-lg">
+                🍔
+              </div>
+              <div>
+                <div className="font-bold text-sm text-[#1E2A3A]">
+                  Pixel Burger Joint
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-white text-sm">
-                      {simBrand}
-                    </span>
-                    {simRank === 1 && (
-                      <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-400/20 text-amber-300 border border-amber-400/40 font-bold">
-                        👑 #1 KING
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-xs text-zinc-400 flex items-center gap-2 mt-0.5">
-                    <span>
-                      Warchest:{" "}
-                      <strong className="text-emerald-400">${simScore}</strong>
-                    </span>
-                    <span>•</span>
-                    <span className="text-zinc-500">Demo Mode</span>
-                  </div>
+                <div className="text-xs text-[#5A6878]">
+                  Current standing: Rank #{simRank}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 justify-between sm:justify-end">
+              <div className="text-right">
+                <div className="font-receipt text-lg font-bold text-[#1E2A3A]">
+                  {simScore} points
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+              <div className="flex items-center gap-2">
                 <button
                   onClick={handleSimBoost}
-                  className="flex-1 sm:flex-initial px-3 py-2 rounded bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500 text-emerald-300 font-bold text-xs flex items-center justify-center gap-1 cursor-pointer active:scale-95 transition-all shadow-sm shadow-emerald-900/50"
+                  className="px-3 py-1.5 rounded-md bg-[#3B7A1F] hover:bg-[#2F6318] text-white text-xs font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1"
                 >
-                  <Flame className="w-3.5 h-3.5 fill-emerald-400" />+ BOOST ($5)
+                  <span>▲</span>
+                  <span>Boost $1</span>
                 </button>
                 <button
                   onClick={handleSimSabotage}
-                  className="flex-1 sm:flex-initial px-3 py-2 rounded bg-rose-950/80 hover:bg-rose-900 border border-rose-500 text-rose-300 font-bold text-xs flex items-center justify-center gap-1 cursor-pointer active:scale-95 transition-all shadow-sm shadow-rose-900/50"
+                  className="px-3 py-1.5 rounded-md bg-[#B82E22] hover:bg-[#99251B] text-white text-xs font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1"
                 >
-                  <Skull className="w-3.5 h-3.5" />- SABOTAGE ($5)
+                  <span>▼</span>
+                  <span>Sabotage $1</span>
                 </button>
               </div>
             </div>
+          </div>
 
-            {/* Live Terminal Log readout */}
-            <div className="bg-black/90 border border-zinc-800 p-3 rounded-lg text-[11px] h-full flex flex-col justify-between">
-              <div>
-                <span className="text-[10px] text-zinc-500 uppercase tracking-widest block mb-1">
-                  &gt; DRIVE-THRU INTERCOM FEED
-                </span>
-                <p
-                  className={`transition-colors font-mono ${
-                    simLastAction === "BOOST"
-                      ? "text-emerald-400"
-                      : simLastAction === "SABOTAGE"
-                        ? "text-rose-400"
-                        : "text-zinc-400"
-                  }`}
-                >
-                  {simLog}
-                </p>
-              </div>
-              <div className="text-[10px] text-zinc-600 mt-2">
-                SFX: Synthesized 8-Bit Web Audio
-              </div>
-            </div>
+          <div className="text-xs font-receipt text-[#5A6878] bg-[#EEF0EA] p-2.5 rounded-md">
+            {simLog}
           </div>
         </section>
 
-        {/* FAQ - Explain Like I'm 12 */}
+        {/* Questions FAQ (Section F12: titled 'Questions') */}
         <section className="space-y-4">
-          <div className="flex items-center gap-2 border-b border-zinc-800 pb-2">
-            <HelpCircle className="w-5 h-5 text-sky-400" />
-            <h2 className="text-lg font-bold text-white uppercase tracking-wider">
-              QUESTIONS A 12-YEAR-OLD (OR YOUR GRANDMA) MIGHT ASK
-            </h2>
-          </div>
+          <h2 className="text-lg font-bold text-[#1E2A3A]">
+            Questions
+          </h2>
 
-          <div className="space-y-2.5">
-            {faqs.map((faq, index) => {
-              const isOpen = openFaq === index;
+          <div className="space-y-2">
+            {faqs.map((faq, idx) => {
+              const isOpen = openFaq === idx;
               return (
                 <div
-                  key={index}
-                  className="bg-zinc-950 border border-zinc-800 rounded-lg overflow-hidden transition-colors"
+                  key={idx}
+                  className="bg-[#FFFFFF] border border-[#E2E4DC] rounded-lg overflow-hidden transition-colors"
                 >
                   <button
-                    onClick={() => {
-                      sound.playClick();
-                      setOpenFaq(isOpen ? null : index);
-                    }}
-                    className="w-full px-4 py-3.5 text-left flex items-center justify-between gap-3 text-sm font-bold text-white hover:text-emerald-400 transition-colors cursor-pointer"
+                    onClick={() => setOpenFaq(isOpen ? null : idx)}
+                    className="w-full text-left p-4 flex items-center justify-between gap-4 font-bold text-sm text-[#1E2A3A] hover:bg-[#FAFBF9] cursor-pointer"
                   >
-                    <span className="flex items-center gap-2.5">
-                      <span className="text-base">{faq.icon}</span>
-                      <span>{faq.q}</span>
-                    </span>
+                    <span>{faq.q}</span>
                     {isOpen ? (
-                      <ChevronUp className="w-4 h-4 text-zinc-400 flex-shrink-0" />
+                      <ChevronUp className="w-4 h-4 text-[#7A8898] flex-shrink-0" />
                     ) : (
-                      <ChevronDown className="w-4 h-4 text-zinc-400 flex-shrink-0" />
+                      <ChevronDown className="w-4 h-4 text-[#7A8898] flex-shrink-0" />
                     )}
                   </button>
+
                   {isOpen && (
-                    <div className="px-4 pb-4 pt-1 text-xs text-zinc-300 font-sans leading-relaxed border-t border-zinc-900 bg-zinc-900/20">
-                      <div>{faq.a}</div>
+                    <div className="px-4 pb-4 pt-1 text-xs sm:text-sm text-[#5A6878] leading-relaxed border-t border-[#F0F2EB]">
+                      <p>{faq.a}</p>
                       {faq.hasAddButton && (
-                        <div className="pt-2.5">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              sound.playClick();
-                              setIsAddChainOpen(true);
-                            }}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 hover:border-emerald-400 text-emerald-300 font-mono text-xs font-bold transition-all cursor-pointer shadow-sm active:scale-95"
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                            <span>+ PROPOSE A CHAIN FOR REVIEW</span>
-                          </button>
-                        </div>
-                      )}
-                      {faq.hasCreatorLink && (
-                        <div className="pt-2.5">
-                          <a
-                            href="https://x.com/vallabh_vy"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={() => sound.playClick()}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-sky-950/80 hover:bg-sky-900 border border-sky-500/50 hover:border-sky-400 text-sky-300 font-mono text-xs font-bold transition-all cursor-pointer shadow-sm active:scale-95"
-                          >
-                            <ExternalLink className="w-3.5 h-3.5" />
-                            <span>CONNECT WITH VALLABH ON X (@vallabh_vy)</span>
-                          </a>
-                        </div>
+                        <button
+                          onClick={() => setIsAddChainOpen(true)}
+                          className="mt-3 px-3 py-1.5 rounded-md bg-[#167A75] text-white text-xs font-bold hover:bg-[#12625E] transition-colors cursor-pointer"
+                        >
+                          Suggest a chain
+                        </button>
                       )}
                     </div>
                   )}
@@ -436,169 +276,26 @@ export default function AboutClient() {
           </div>
         </section>
 
-        {/*Creator & Inspiration Section */}
-        <section className="bg-gradient-to-br from-zinc-950 via-black to-zinc-950 border border-emerald-500/40 rounded-xl p-6 sm:p-8 space-y-6 relative overflow-hidden shadow-xl">
-          <div className="absolute -top-12 -right-12 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-
-          <div className="flex items-center gap-2 border-b border-zinc-800 pb-3">
-            <Sparkles className="w-5 h-5 text-emerald-400" />
-            <h2 className="text-lg font-bold text-white uppercase tracking-wider">
-              CREATOR &amp; INSPIRATION
-            </h2>
-          </div>
-
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-            <div className="space-y-3 max-w-2xl">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full border-2 border-emerald-400 bg-zinc-900 flex items-center justify-center text-xl shadow-md shadow-emerald-500/20">
-                  👨‍💻
-                </div>
-                <div>
-                  <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-                    <span>Created by Vallabh</span>
-                    <a
-                      href="https://x.com/vallabh_vy"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-sky-400 hover:text-sky-300 hover:underline flex items-center gap-1 font-mono"
-                    >
-                      <span>@vallabh_vy</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-                  </h3>
-                  <p className="text-xs text-emerald-400 font-mono">
-                    Indie Developer &amp; Builder of TOPFASTFOOD.LOL
-                  </p>
-                </div>
-              </div>
-
-              <p className="text-xs sm:text-sm text-zinc-300 font-sans leading-relaxed">
-                This project was{" "}
-                <strong className="text-white">inspired by Outbid.lol</strong> —
-                taking that thrilling, petty live turf-war bidding competition
-                and letting loose on the greatest debate in culinary history:
-                fast food dominance.
-              </p>
-
-              <p className="text-xs text-zinc-400 font-sans leading-relaxed">
-                No corporate sponsorships, no pretentious food critics. Just
-                pure community fun, greasy retro pixel receipts, and drive-thru
-                bragging rights.
-              </p>
-            </div>
-
-            {/* Creator Social Callout Button */}
-            <div className="w-full md:w-auto shrink-0 flex flex-col gap-2">
-              <a
-                href="https://x.com/vallabh_vy"
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => sound.playClick()}
-                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-sky-500/50 hover:border-sky-400 text-sky-300 hover:text-white font-mono text-xs font-bold transition-all shadow-md active:scale-95 group cursor-pointer"
-              >
-                <svg
-                  className="w-4 h-4 fill-current group-hover:text-white transition-colors"
-                  viewBox="0 0 24 24"
-                >
-                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                </svg>
-                <span>FOLLOW @vallabh_vy ON X</span>
-                <ExternalLink className="w-3.5 h-3.5 opacity-70 group-hover:opacity-100" />
-              </a>
-
-              <button
-                type="button"
-                onClick={() => {
-                  sound.playClick();
-                  setIsFeedbackOpen(true);
-                }}
-                className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-amber-500/50 hover:border-amber-400 text-amber-300 hover:text-white font-mono text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer"
-              >
-                <Lightbulb className="w-3.5 h-3.5 text-amber-400" />
-                <span>SUGGEST FEATURE / REPORT BUG</span>
-              </button>
-
-              <span className="text-[10px] text-zinc-500 text-center font-mono">
-                Questions or feedback? Beams directly to Vallabh&apos;s inbox!
-              </span>
-            </div>
-          </div>
-        </section>
-
-        {/* Big Retro CTA Banner */}
-        <section className="text-center py-10 px-6 rounded-xl border border-emerald-500/40 bg-gradient-to-b from-zinc-950 to-black space-y-4 shadow-xl">
-          <h2 className="text-2xl sm:text-3xl font-extrabold uppercase text-white tracking-tight glow-green">
-            READY TO JOIN THE DRIVE-THRU TURF WAR?
-          </h2>
-          <p className="text-xs sm:text-sm text-zinc-400 max-w-lg mx-auto font-sans">
-            Jump in now, check out who is winning #1, and make sure your
-            favorite fast food doesn&apos;t get dethroned!
+        {/* Credits */}
+        <section className="pt-4 border-t border-[#E2E4DC] text-xs text-[#5A6878] space-y-1">
+          <p>
+            Concept inspired by <a href="https://outbid.lol" target="_blank" rel="noopener noreferrer" className="text-[#167A75] font-bold hover:underline">Outbid.lol</a>. Built by <a href="https://x.com/vallabh_vy" target="_blank" rel="noopener noreferrer" className="text-[#167A75] font-bold hover:underline">@vallabh_vy</a>.
           </p>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-            <Link
-              href="/"
-              onClick={() => sound.playClick()}
-              className="w-full sm:w-auto px-6 py-3 rounded bg-[#39ff14] hover:bg-[#32e012] text-black font-extrabold text-sm uppercase tracking-wider transition-all cursor-pointer shadow-lg shadow-emerald-500/20 active:scale-95"
-            >
-              🍔 ENTER THE DRIVE-THRU NOW
-            </Link>
-            <Link
-              href="/#leaderboard"
-              onClick={() => sound.playClick()}
-              className="w-full sm:w-auto px-5 py-3 rounded bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-zinc-700 text-xs uppercase tracking-wider font-bold transition-all cursor-pointer"
-            >
-              👑 VIEW LIVE LEADERBOARD
-            </Link>
-          </div>
+          <p>
+            Parody fan ranking under nominative fair use. Not affiliated with any restaurant corporation.
+          </p>
         </section>
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-zinc-900 bg-black py-6 px-4 text-center text-xs text-zinc-600 font-mono">
-        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex flex-col sm:flex-row items-center gap-1.5 sm:gap-2 text-center sm:text-left">
-            <span>
-              © {new Date().getFullYear()} TOPFASTFOOD.LOL • The Petty
-              Drive-Thru Turf War
-            </span>
-            <span className="hidden sm:inline text-zinc-700">•</span>
-            <span>
-              Created by{" "}
-              <a
-                href="https://x.com/vallabh_vy"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-zinc-400 hover:text-emerald-400 transition-colors underline font-bold"
-              >
-                Vallabh (@vallabh_vy)
-              </a>{" "}
-              (Inspired by Outbid.lol)
-            </span>
-          </div>
-          <div className="flex items-center gap-4 text-zinc-500">
-            <Link href="/" className="hover:text-emerald-400 transition-colors">
-              Leaderboard
-            </Link>
-            <Link href="/about" className="text-emerald-400 font-bold">
-              About
-            </Link>
-            <Link
-              href="/disclaimer"
-              className="hover:text-emerald-400 transition-colors"
-            >
-              Legal
-            </Link>
-          </div>
-        </div>
-      </footer>
-      {/* Propose Chain Modal */}
+      <DriveThruFooter onOpenFeedback={() => setIsFeedbackOpen(true)} />
+
+      {/* Modals */}
       <AddChainModal
         isOpen={isAddChainOpen}
         onClose={() => setIsAddChainOpen(false)}
       />
 
-      {/* Feature Suggestion & Bug Report Modal */}
       <FeedbackModal
         isOpen={isFeedbackOpen}
         onClose={() => setIsFeedbackOpen(false)}

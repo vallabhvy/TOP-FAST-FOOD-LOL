@@ -2,59 +2,52 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import confetti from "canvas-confetti";
-import { Search, PlusCircle, Plus, Flame, Skull, X, AlertTriangle, Lightbulb } from "lucide-react";
-import { FastFoodBrand, ActionType, Transaction, CRTColorTheme } from "@/types";
+import { Search } from "lucide-react";
+import { FastFoodBrand, ActionType, Transaction } from "@/types";
 import { INITIAL_BRANDS, INITIAL_TRANSACTIONS } from "@/lib/initialData";
 import { DriveThruHeader } from "@/components/DriveThruHeader";
-import { BrandCard } from "@/components/BrandCard";
+import { NumberOneSign } from "@/components/NumberOneSign";
+import { ChainRow } from "@/components/ChainRow";
+import { LiveTicker } from "@/components/LiveTicker";
 import { DriveThruModal } from "@/components/DriveThruModal";
 import { ReceiptModal } from "@/components/ReceiptModal";
 import { AddChainModal } from "@/components/AddChainModal";
 import { FeedbackModal } from "@/components/FeedbackModal";
-import { LegalDisclaimer } from "@/components/LegalDisclaimer";
-import { UserAvatar } from "@/components/UserAvatar";
-import { LiveTicker } from "@/components/LiveTicker";
-import { PodiumShowcase } from "@/components/PodiumShowcase";
+import { DriveThruFooter } from "@/components/DriveThruFooter";
 import { sound } from "@/lib/sound";
 import { validateContent } from "@/lib/moderation";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
-const ALLOWED_AMOUNTS = [1, 2, 5, 10];
-const ORDER_COOLDOWN_MS = 3000; // 3 second cooldown between orders
-const ITEMS_PER_PAGE = 10;
+const CUISINE_TAGS = [
+  "All",
+  "Burgers",
+  "Chicken",
+  "Mexican",
+  "Pizza",
+  "Sandwiches",
+  "Late Night",
+  "Dessert",
+];
 
 export default function Home() {
-  const [theme, setTheme] = useState<CRTColorTheme>("green");
   const [brands, setBrands] = useState<FastFoodBrand[]>(INITIAL_BRANDS);
-  const [transactions, setTransactions] =
-    useState<Transaction[]>(INITIAL_TRANSACTIONS);
+  const [transactions, setTransactions] = useState<Transaction[]>(INITIAL_TRANSACTIONS);
   const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-
-  // Reset pagination when search changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery]);
+  const [selectedCuisine, setSelectedCuisine] = useState("All");
 
   // Modal State
   const [isOrderOpen, setIsOrderOpen] = useState(false);
-  const [selectedBrand, setSelectedBrand] = useState<FastFoodBrand | null>(
-    null,
-  );
+  const [selectedBrand, setSelectedBrand] = useState<FastFoodBrand | null>(null);
   const [orderAction, setOrderAction] = useState<ActionType>("BOOST");
-  const [replyMessage, setReplyMessage] = useState("");
 
   // Receipt Modal State
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [activeReceipt, setActiveReceipt] = useState<Transaction | null>(null);
-
-  // Add Chain Modal State
-  const [isAddChainOpen, setIsAddChainOpen] = useState(false);
-  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [lastRank, setLastRank] = useState<number>(1);
 
-  // Rate limiting state
-  const [lastOrderTime, setLastOrderTime] = useState<number>(0);
+  // Add Chain & Feedback State
+  const [isAddChainOpen, setIsAddChainOpen] = useState(false);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
 
   // Payment success toast state
   const [paymentToast, setPaymentToast] = useState<string | null>(null);
@@ -63,21 +56,18 @@ export default function Home() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("payment") === "success") {
-      setPaymentToast("Payment successful! Your boost/sabotage is being processed...");
-      // Celebrate!
+      setPaymentToast("Payment successful! Your boost/sabotage is recorded.");
       confetti({
-        particleCount: 150,
-        spread: 100,
+        particleCount: 100,
+        spread: 80,
         origin: { y: 0.5 },
-        colors: ["#39ff14", "#ffb000", "#ffffff", "#22c55e"],
+        colors: ["#3B7A1F", "#167A75", "#FFB000", "#1E2A3A"],
       });
       sound.playCashRegister();
 
-      // Clean the URL so refreshing doesn't re-trigger
       const cleanUrl = window.location.pathname;
       window.history.replaceState({}, "", cleanUrl);
 
-      // Auto-dismiss toast after 8 seconds
       const timer = setTimeout(() => setPaymentToast(null), 8000);
       return () => clearTimeout(timer);
     }
@@ -88,7 +78,6 @@ export default function Home() {
     const client = supabase;
     if (!isSupabaseConfigured || !client) return;
 
-    // Fetch initial brands
     const fetchBrands = async () => {
       const { data, error } = await client.from("brands").select("*");
       if (data && !error && data.length > 0) {
@@ -105,14 +94,13 @@ export default function Home() {
             sloganAuthor: row.slogan_author,
             updatedAt: "Live",
             clicks: row.clicks || 0,
-            accentColor: row.accent_color || "#f59e0b",
+            accentColor: row.accent_color || "#3B7A1F",
             status: row.status || "approved",
-          })),
+          }))
         );
       }
     };
 
-    // Fetch recent transactions
     const fetchTransactions = async () => {
       const { data, error } = await client
         .from("transactions")
@@ -134,7 +122,7 @@ export default function Home() {
             receiptNumber: row.receipt_number,
             likes: row.likes || 0,
             dislikes: row.dislikes || 0,
-          })),
+          }))
         );
       }
     };
@@ -142,18 +130,74 @@ export default function Home() {
     fetchBrands();
     fetchTransactions();
 
-    // Realtime channel
     const channel = client
-      .channel("drive-thru-updates")
+      .channel("public-db-sync")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "brands" },
-        () => fetchBrands(),
+        (payload) => {
+          if (payload.eventType === "UPDATE") {
+            const updated = payload.new;
+            setBrands((prev) =>
+              prev.map((b) =>
+                b.id === updated.id
+                  ? {
+                      ...b,
+                      totalScore: updated.total_score,
+                      totalBoosts: updated.total_boosts,
+                      totalSabotages: updated.total_sabotages,
+                      currentSlogan: updated.current_slogan,
+                      sloganAuthor: updated.slogan_author,
+                      updatedAt: "Just now",
+                    }
+                  : b
+              )
+            );
+          } else if (payload.eventType === "INSERT") {
+            const newRow = payload.new;
+            setBrands((prev) => [
+              ...prev,
+              {
+                id: newRow.id,
+                name: newRow.name,
+                alias: newRow.alias,
+                category: newRow.category,
+                totalScore: newRow.total_score || 0,
+                totalBoosts: newRow.total_boosts || 0,
+                totalSabotages: newRow.total_sabotages || 0,
+                currentSlogan: newRow.current_slogan,
+                sloganAuthor: newRow.slogan_author,
+                updatedAt: "Just now",
+                clicks: 0,
+                accentColor: newRow.accent_color || "#3B7A1F",
+                status: newRow.status || "approved",
+              },
+            ]);
+          }
+        }
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "transactions" },
-        () => fetchTransactions(),
+        { event: "INSERT", schema: "public", table: "transactions" },
+        (payload) => {
+          const newRow = payload.new;
+          setTransactions((prev) => [
+            {
+              id: newRow.id,
+              brandId: newRow.brand_id,
+              brandName: newRow.brand_name,
+              actionType: newRow.action_type as ActionType,
+              amount: newRow.amount,
+              message: newRow.message,
+              author: newRow.author,
+              timestamp: "Just now",
+              receiptNumber: newRow.receipt_number,
+              likes: newRow.likes || 0,
+              dislikes: newRow.dislikes || 0,
+            },
+            ...prev.slice(0, 19),
+          ]);
+        }
       )
       .subscribe();
 
@@ -162,53 +206,59 @@ export default function Home() {
     };
   }, []);
 
-  // Sorted Brands by totalScore descending (excluding hidden & pending review chains)
+  // Sorted Brands (Leaderboard order)
   const sortedBrands = useMemo(() => {
-    return [...brands]
-      .filter((b) => b.status === "approved" || (!b.status && b.status !== "hidden" && b.status !== "pending"))
-      .sort((a, b) => b.totalScore - a.totalScore);
+    return [...brands].sort((a, b) => {
+      if (b.totalScore !== a.totalScore) {
+        return b.totalScore - a.totalScore;
+      }
+      // Tie breaker: If all at 0 or same score, sort alphabetically
+      return a.name.localeCompare(b.name);
+    });
   }, [brands]);
 
-  // Total Warchest
-  const totalWarchest = useMemo(() => {
-    return brands.reduce((sum, b) => sum + Math.max(0, b.totalScore), 0);
-  }, [brands]);
+  // #1 Leader chain (has score > 0 or top of sorted list)
+  const leaderChain = sortedBrands.length > 0 ? sortedBrands[0] : null;
+  const isLeaderClaimed = leaderChain && (leaderChain.totalScore > 0 || leaderChain.totalBoosts > 0);
 
   // Filtered Brands
   const filteredBrands = useMemo(() => {
-    return sortedBrands.filter((b) => {
-      const matchesSearch =
-        b.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        b.currentSlogan.toLowerCase().includes(searchQuery.toLowerCase());
+    let result = sortedBrands;
 
-      return matchesSearch;
-    });
-  }, [sortedBrands, searchQuery]);
+    // Filter by cuisine tag
+    if (selectedCuisine !== "All") {
+      result = result.filter(
+        (b) => b.category.toLowerCase() === selectedCuisine.toLowerCase()
+      );
+    }
 
-  // Pagination logic
-  const totalPages = Math.ceil(filteredBrands.length / ITEMS_PER_PAGE);
-  const paginatedBrands = useMemo(() => {
-    const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    const end = start + ITEMS_PER_PAGE;
-    return filteredBrands.slice(start, end);
-  }, [filteredBrands, currentPage]);
+    // Search query
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      result = result.filter(
+        (b) =>
+          b.name.toLowerCase().includes(q) ||
+          b.category.toLowerCase().includes(q) ||
+          (b.alias && b.alias.toLowerCase().includes(q)) ||
+          b.currentSlogan.toLowerCase().includes(q)
+      );
+    } else if (isLeaderClaimed && selectedCuisine === "All") {
+      // Per Section 4.4 & F5: Remove #1 duplicate when #1 is featured in the sign
+      result = result.filter((b) => b.id !== leaderChain?.id);
+    }
 
-  const handleOpenOrder = (
-    brand: FastFoodBrand,
-    action: ActionType,
-    replyTo?: string,
-  ) => {
+    return result;
+  }, [sortedBrands, searchQuery, selectedCuisine, isLeaderClaimed, leaderChain?.id]);
+
+  const handleOpenOrder = (brand: FastFoodBrand, action: ActionType) => {
+    sound.playClick();
     setSelectedBrand(brand);
     setOrderAction(action);
-    setReplyMessage(replyTo || "");
     setIsOrderOpen(true);
   };
 
   const handleBrandClick = (brandId: string) => {
-    setBrands((prev) =>
-      prev.map((b) => (b.id === brandId ? { ...b, clicks: b.clicks + 1 } : b)),
-    );
-    // Click counter is local-only; actual engagement is tracked via orders
+    window.location.href = `/chain/${brandId}`;
   };
 
   const handleOrderSubmit = async (params: {
@@ -218,32 +268,10 @@ export default function Home() {
     message: string;
     author: string;
     location?: string;
-  }): Promise<string | undefined> => {
-    // Rate limiting
-    const now = Date.now();
-    if (now - lastOrderTime < ORDER_COOLDOWN_MS) {
-      return "Please wait a few seconds before placing another order.";
-    }
-    setLastOrderTime(now);
-
-    // Validate amount is in allowed set
-    if (!ALLOWED_AMOUNTS.includes(params.amount)) {
-      return "Invalid amount selected.";
-    }
-
-    // Client-side moderation gate (defense in depth)
+  }) => {
     const msgValidation = validateContent(params.message, "message");
-    if (!msgValidation.isValid) return msgValidation.reason || "Prohibited content detected.";
+    if (!msgValidation.isValid) return msgValidation.reason || "Invalid message.";
 
-    const authorValidation = validateContent(params.author, "author");
-    if (!authorValidation.isValid) return authorValidation.reason || "Invalid identity.";
-
-    if (params.location) {
-      const locValidation = validateContent(params.location, "location");
-      if (!locValidation.isValid) return locValidation.reason || "Invalid location.";
-    }
-
-    // Persist via server-side API route FIRST (validates & writes with service role)
     try {
       const res = await fetch("/api/order", {
         method: "POST",
@@ -266,16 +294,14 @@ export default function Home() {
 
       if (data.paymentLink) {
         window.location.href = data.paymentLink;
-        return; // Redirecting, stop execution
+        return;
       }
     } catch {
-      // Network failure — proceed with optimistic update (assuming demo mode)
+      // Fallback
     }
 
-    const previousLeader = sortedBrands[0];
-
+    // Optimistic state update for demo
     let newCalculatedRank = 1;
-
     setBrands((prev) => {
       const updated = prev.map((b) => {
         if (b.id !== params.brandId) return b;
@@ -297,29 +323,12 @@ export default function Home() {
               : b.totalSabotages,
           currentSlogan: params.message,
           sloganAuthor: params.author,
-          location: params.location || b.location,
           updatedAt: "Just now",
         };
       });
 
-      const newSorted = [...updated].sort(
-        (a, b) => b.totalScore - a.totalScore,
-      );
-      newCalculatedRank =
-        newSorted.findIndex((b) => b.id === params.brandId) + 1;
-
-      if (
-        newSorted[0].id !== previousLeader.id &&
-        newSorted[0].id === params.brandId
-      ) {
-        confetti({
-          particleCount: 120,
-          spread: 80,
-          origin: { y: 0.6 },
-          colors: ["#39ff14", "#ffb000", "#ffffff"],
-        });
-      }
-
+      const newSorted = [...updated].sort((a, b) => b.totalScore - a.totalScore);
+      newCalculatedRank = newSorted.findIndex((b) => b.id === params.brandId) + 1;
       return updated;
     });
 
@@ -333,7 +342,6 @@ export default function Home() {
       amount: params.amount,
       message: params.message,
       author: params.author,
-      location: params.location,
       timestamp: "Just now",
       receiptNumber,
     };
@@ -345,248 +353,159 @@ export default function Home() {
     setLastRank(newCalculatedRank);
     setIsReceiptOpen(true);
 
-    return undefined; // success — no error
+    return undefined;
   };
 
-
-
-  const isGreen = theme === "green";
-  const screenBg = isGreen ? "crt-screen" : "crt-amber-screen";
-
   return (
-    <div
-      className={`min-h-screen ${screenBg} cyber-arena-bg relative flex flex-col justify-between`}
-    >
-      {/* Scanline overlay */}
-      <div className="fixed inset-0 scanlines pointer-events-none z-40 opacity-75" />
+    <div className="min-h-screen bg-[#F6F7F3] text-[#1E2A3A] flex flex-col justify-between font-sans">
+      {/* Payment Success Notification Toast */}
+      {paymentToast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-[#3B7A1F] text-white px-5 py-3 rounded-xl shadow-lg font-bold text-sm flex items-center gap-2 animate-slide-up">
+          <span>✓</span>
+          <span>{paymentToast}</span>
+        </div>
+      )}
 
-      {/* Sticky Header & Live Ticker Unit */}
-      <div className="sticky top-0 z-30 shadow-2xl backdrop-blur-md">
-        <DriveThruHeader
-          theme={theme}
-          setTheme={setTheme}
-          recentTransactions={transactions}
-          totalWarchest={totalWarchest}
-        />
-
-        {/* Live Responsive Activity Wire Ticker */}
-        <LiveTicker
-          transactions={transactions}
-          leader={sortedBrands[0]}
-        />
-      </div>
+      {/* Header */}
+      <DriveThruHeader recentTransactions={transactions} />
 
       {/* Main Content Area */}
-      <main className="max-w-7xl mx-auto px-3 sm:px-4 py-6 sm:py-8 flex-1 w-full relative z-10">
-        {/* Top 3 Podium of Glory - Visible on main page when not filtering */}
-        {!searchQuery && currentPage === 1 && (
-          <PodiumShowcase
-            brands={sortedBrands}
+      <main className="max-w-4xl mx-auto px-4 py-6 sm:py-8 flex-1 w-full">
+        {/* Rule Headline (Section 4.4 & 5.2) */}
+        <div className="mb-6 text-center sm:text-left">
+          <h1 className="text-xl sm:text-2xl font-extrabold text-[#1E2A3A] tracking-tight">
+            The internet&apos;s fast food ranking, settled in dollars.
+          </h1>
+          <p className="text-sm sm:text-base text-[#5A6878] mt-1 font-medium">
+            $1 pushes your chain up a point. $1 pushes a rival down one.
+          </p>
+
+          {/* Search Field */}
+          <div className="relative mt-4 max-w-xl">
+            <Search className="w-4 h-4 text-[#7A8898] absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Find your chain (e.g. McDonald's, Taco Bell, Wendy's)..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-[#FFFFFF] border border-[#CBD2C4] rounded-lg pl-10 pr-4 py-2.5 text-sm text-[#1E2A3A] placeholder-[#9AA5B1] focus:outline-none focus:border-[#167A75] focus:ring-1 focus:ring-[#167A75] shadow-2xs"
+            />
+          </div>
+        </div>
+
+        {/* #1 Marquee Sign (Section 4.4) - Amber Sign */}
+        {!searchQuery && selectedCuisine === "All" && (
+          <NumberOneSign
+            leader={leaderChain}
             onOpenOrder={handleOpenOrder}
             onBrandClick={handleBrandClick}
           />
         )}
 
-        {/* Search Bar & Action Controls */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-5">
-          <div className="relative w-full max-w-md">
-            <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Search 45+ fast food chains, roasts, or slogans..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-zinc-950/90 border border-zinc-800 rounded-xl pl-9 pr-3 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500/80 focus:ring-1 focus:ring-emerald-500/40 font-mono shadow-inner transition-all"
-            />
-          </div>
-
-          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+        {/* Cuisine Filter Chips (Section 5.2) */}
+        <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-2 mb-4 scrollbar-none">
+          {CUISINE_TAGS.map((tag) => (
             <button
+              key={tag}
               onClick={() => {
                 sound.playClick();
-                setIsAddChainOpen(true);
+                setSelectedCuisine(tag);
               }}
-              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-950/80 to-emerald-900/60 hover:from-emerald-600 hover:to-emerald-500 hover:text-black border border-emerald-500/60 text-emerald-300 font-mono text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md shadow-emerald-950/50 active:scale-95 flex-shrink-0"
-              title="Propose a fast food chain to be added"
+              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors cursor-pointer border ${
+                selectedCuisine === tag
+                  ? "bg-[#1E2A3A] text-white border-[#1E2A3A]"
+                  : "bg-[#FFFFFF] text-[#5A6878] border-[#E2E4DC] hover:border-[#CBD2C4] hover:text-[#1E2A3A]"
+              }`}
             >
-              <Plus className="w-3.5 h-3.5 text-emerald-400 group-hover:text-black" />
-              <span>+ ADD A CHAIN</span>
+              {tag}
             </button>
-
-            <button
-              onClick={() => {
-                sound.playClick();
-                setIsFeedbackOpen(true);
-              }}
-              className="px-3.5 py-2 rounded-xl bg-zinc-900/90 hover:bg-zinc-800 border border-amber-500/40 hover:border-amber-400 text-amber-300 hover:text-white font-mono text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95 flex-shrink-0"
-              title="Suggest a feature or report a bug directly to the creator"
-            >
-              <Lightbulb className="w-3.5 h-3.5 text-amber-400" />
-              <span>BUGS / IDEAS</span>
-            </button>
-          </div>
+          ))}
         </div>
 
-        {/* Section Heading */}
-        <div className="flex items-center justify-between mb-3 px-1">
-          <div className="flex items-center gap-2 text-xs font-mono font-bold text-zinc-400 uppercase tracking-wider">
-            <Flame className="w-3.5 h-3.5 text-amber-400" />
-            <span>
-              {searchQuery
-                ? `Search Results (${filteredBrands.length})`
-                : "THE ARENA LEADERBOARD"}
-            </span>
-          </div>
-          <span className="text-[11px] font-mono text-zinc-500">
-            Page {currentPage} of {totalPages || 1} • {filteredBrands.length} Chains
-          </span>
-        </div>
+        {/* The Leaderboard List (One row per chain) */}
+        <div className="space-y-2">
+          {filteredBrands.map((brand) => {
+            const actualRank = sortedBrands.findIndex((b) => b.id === brand.id) + 1;
+            const isTied =
+              sortedBrands.filter((b) => b.totalScore === brand.totalScore).length > 1;
 
-        {/* The Leaderboard Grid / Rows */}
-        <div className="space-y-3">
-          {paginatedBrands.map((brand) => {
-            const actualRank =
-              sortedBrands.findIndex((b) => b.id === brand.id) + 1;
             return (
-              <BrandCard
+              <ChainRow
                 key={brand.id}
                 brand={brand}
                 rank={actualRank}
-                comments={transactions.filter((tx) => tx.brandId === brand.id)}
+                isTied={isTied}
                 onOpenOrder={handleOpenOrder}
-                onBrandClick={handleBrandClick}
-                onReceiptClick={(tx) => {
-                  setActiveReceipt(tx);
-                  const rankIndex =
-                    sortedBrands.findIndex((b) => b.id === tx.brandId) + 1;
-                  setLastRank(rankIndex > 0 ? rankIndex : actualRank);
-                  setIsReceiptOpen(true);
-                }}
-                theme={theme}
               />
             );
           })}
 
           {filteredBrands.length === 0 && (
-            <div className="text-center py-12 border border-dashed border-zinc-800 rounded-lg">
-              <p className="text-zinc-500 font-mono text-sm">
-                No result found matching &quot;{searchQuery}&quot;.
+            <div className="text-center py-12 bg-[#FFFFFF] border border-dashed border-[#CBD2C4] rounded-lg">
+              <p className="text-[#5A6878] text-sm">
+                No restaurant found matching &quot;{searchQuery}&quot;.
               </p>
-            </div>
-          )}
-
-          {/* Pagination Controls */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2 mt-6 py-4">
               <button
                 onClick={() => {
                   sound.playClick();
-                  setCurrentPage(p => Math.max(1, p - 1));
+                  setIsAddChainOpen(true);
                 }}
-                disabled={currentPage === 1}
-                className="px-3 py-1.5 rounded bg-zinc-900 border border-zinc-700 text-zinc-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-zinc-800 font-mono text-xs transition-colors"
+                className="mt-3 text-xs font-bold text-[#167A75] hover:underline cursor-pointer"
               >
-                &larr; PREV
-              </button>
-              
-              <div className="flex gap-1">
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                  <button
-                    key={page}
-                    onClick={() => {
-                      sound.playClick();
-                      setCurrentPage(page);
-                    }}
-                    className={`w-8 h-8 flex items-center justify-center rounded font-mono text-xs font-bold transition-all ${
-                      currentPage === page
-                        ? "bg-emerald-500 text-black border-emerald-400"
-                        : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-white"
-                    } border`}
-                  >
-                    {page}
-                  </button>
-                ))}
-              </div>
-
-              <button
-                onClick={() => {
-                  sound.playClick();
-                  setCurrentPage(p => Math.min(totalPages, p + 1));
-                }}
-                disabled={currentPage === totalPages}
-                className="px-3 py-1.5 rounded bg-zinc-900 border border-zinc-700 text-zinc-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-zinc-800 font-mono text-xs transition-colors"
-              >
-                NEXT &rarr;
+                Missing a chain? Suggest one
               </button>
             </div>
           )}
         </div>
+
+        {/* Suggest Chain Action (Bottom of list per Section 4.4 & F11) */}
+        {filteredBrands.length > 0 && (
+          <div className="mt-4 text-center py-3 text-xs sm:text-sm text-[#5A6878]">
+            Missing a chain?{" "}
+            <button
+              onClick={() => {
+                sound.playClick();
+                setIsAddChainOpen(true);
+              }}
+              className="text-[#167A75] font-bold hover:underline cursor-pointer ml-0.5"
+            >
+              Suggest one
+            </button>
+          </div>
+        )}
+
+        {/* Live Activity Feed (Section 4.4 & 5.2 - Real data only) */}
+        <LiveTicker transactions={transactions} />
       </main>
 
-      {/* Order Intercom Modal */}
+      {/* Footer (Section 4.4, 5.2, F11) */}
+      <DriveThruFooter onOpenFeedback={() => setIsFeedbackOpen(true)} />
+
+      {/* Modals */}
       <DriveThruModal
-        key={
-          selectedBrand
-            ? `${selectedBrand.id}-${orderAction}-${replyMessage}`
-            : "none"
-        }
+        isOpen={isOrderOpen}
         brand={selectedBrand}
         initialAction={orderAction}
-        initialMessage={replyMessage}
-        isOpen={isOrderOpen}
-        onClose={() => {
-          setIsOrderOpen(false);
-          setReplyMessage("");
-        }}
+        onClose={() => setIsOrderOpen(false)}
         onSubmit={handleOrderSubmit}
-        theme={theme}
       />
 
-      {/* Greasy Digital Receipt Modal */}
       <ReceiptModal
-        transaction={activeReceipt}
         isOpen={isReceiptOpen}
-        onClose={() => setIsReceiptOpen(false)}
+        transaction={activeReceipt}
         brandRank={lastRank}
+        onClose={() => setIsReceiptOpen(false)}
       />
 
-      {/* Add Chain Modal (Pending Review Queue) */}
       <AddChainModal
         isOpen={isAddChainOpen}
         onClose={() => setIsAddChainOpen(false)}
-        theme={theme}
       />
 
-      {/* Feature Suggestion & Bug Report Modal */}
       <FeedbackModal
         isOpen={isFeedbackOpen}
         onClose={() => setIsFeedbackOpen(false)}
-        theme={theme}
       />
-
-      {/* Legal & Parody Protection Disclaimer */}
-      <LegalDisclaimer theme={theme} />
-
-      {/* Payment Success Toast */}
-      {paymentToast && (
-        <div
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[9999] animate-[slideUp_0.4s_ease-out]"
-          style={{ animation: "slideUp 0.4s ease-out" }}
-        >
-          <div className="bg-emerald-950/95 border border-emerald-500/60 rounded-xl px-6 py-4 shadow-2xl shadow-emerald-500/20 backdrop-blur-md flex items-center gap-3 max-w-md">
-            <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
-              <span className="text-emerald-400 text-lg">✓</span>
-            </div>
-            <p className="text-emerald-200 font-mono text-sm">{paymentToast}</p>
-            <button
-              onClick={() => setPaymentToast(null)}
-              className="text-emerald-500 hover:text-white ml-2 flex-shrink-0 cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

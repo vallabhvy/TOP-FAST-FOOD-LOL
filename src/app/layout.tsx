@@ -1,53 +1,54 @@
 import type { Metadata } from "next";
-import { VT323, Share_Tech_Mono } from "next/font/google";
+import { Archivo, Share_Tech_Mono } from "next/font/google";
 import "./globals.css";
 
-const vt323 = VT323({
-  weight: "400",
-  variable: "--font-vt323",
+const archivo = Archivo({
   subsets: ["latin"],
+  variable: "--font-archivo",
+  display: "swap",
 });
 
-const shareTechMono = Share_Tech_Mono({
+const techMono = Share_Tech_Mono({
   weight: "400",
-  variable: "--font-tech-mono",
+  variable: "--font-mono",
   subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://topfastfood.lol"),
-  title: "TOPFASTFOOD.LOL",
+  title: "topfastfood.lol — The internet's fast food ranking, settled in dollars",
   description:
-    "The unhinged live pay-to-rank leaderboard deciding the greatest fast food chain on earth through cold, petty micro-bribes & grease sabotage. No food critics. Just cash.",
+    "$1 pushes your chain up a point. $1 pushes a rival down one. Decided live by fans.",
   keywords: [
     "top fast food",
     "fast food rankings",
     "drive thru leaderboard",
     "outbid",
     "topfastfood",
-    "meme ranking",
+    "fast food ranking",
   ],
   openGraph: {
-    title: "TOPFASTFOOD.LOL | The Petty Drive-Thru Turf War",
+    title: "topfastfood.lol — The internet's fast food ranking, settled in dollars",
     description:
-      "Rankings decided by cold, petty cash. Boost your king or sabotage your rivals.",
+      "$1 pushes your chain up a point. $1 pushes a rival down one. Decided live by fans.",
     url: "https://topfastfood.lol",
-    siteName: "TOPFASTFOOD.LOL",
+    siteName: "topfastfood.lol",
     type: "website",
     images: [
       {
         url: "/logo.jpg",
         width: 1200,
         height: 1200,
-        alt: "TOPFASTFOOD.LOL",
+        alt: "topfastfood.lol",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "TOPFASTFOOD.LOL | The Petty Drive-Thru Turf War",
+    title: "topfastfood.lol — The internet's fast food ranking, settled in dollars",
     description:
-      "Rankings decided by cold, petty cash. Boost your king or sabotage your rivals.",
+      "$1 pushes your chain up a point. $1 pushes a rival down one. Decided live by fans.",
     images: ["/logo.jpg"],
   },
 };
@@ -60,17 +61,17 @@ export default function RootLayout({
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    name: "TOPFASTFOOD.LOL",
+    name: "topfastfood.lol",
     url: "https://topfastfood.lol",
-    description: "The unhinged live pay-to-rank leaderboard deciding the greatest fast food chain on earth through cold, petty micro-bribes.",
+    description: "The internet's fast food ranking, settled in dollars.",
   };
 
   return (
     <html
       lang="en"
-      className={`${vt323.variable} ${shareTechMono.variable} h-full antialiased`}
+      className={`${archivo.variable} ${techMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-[#060907] text-[#39ff14] font-mono selection:bg-[#39ff14] selection:text-black">
+      <body className="min-h-full flex flex-col bg-[#F6F7F3] text-[#1E2A3A] font-sans selection:bg-[#167A75] selection:text-white">
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

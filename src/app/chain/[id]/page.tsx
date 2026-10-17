@@ -19,13 +19,13 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   if (!brand) return {};
 
   return {
-    title: `${brand.name} | TOPFASTFOOD.LOL`,
-    description: `Read the live petty roasts and boosts for ${brand.name}: "${brand.current_slogan}"`,
+    title: `${brand.name} — topfastfood.lol`,
+    description: `$1 pushes ${brand.name} up a point. $1 pushes a rival down one. Top backer: "${brand.current_slogan}"`,
     openGraph: {
-      title: `${brand.name} | TOPFASTFOOD.LOL`,
-      description: `Read the live petty roasts and boosts for ${brand.name}: "${brand.current_slogan}"`,
+      title: `${brand.name} — topfastfood.lol`,
+      description: `$1 pushes ${brand.name} up a point. $1 pushes a rival down one. Top backer: "${brand.current_slogan}"`,
       url: `https://topfastfood.lol/chain/${id}`,
-      siteName: "TOPFASTFOOD.LOL",
+      siteName: "topfastfood.lol",
       images: [
         {
           url: "/logo.jpg",
@@ -38,8 +38,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     },
     twitter: {
       card: "summary_large_image",
-      title: `${brand.name} | TOPFASTFOOD.LOL`,
-      description: `Read the live petty roasts and boosts for ${brand.name}: "${brand.current_slogan}"`,
+      title: `${brand.name} — topfastfood.lol`,
+      description: `$1 pushes ${brand.name} up a point. $1 pushes a rival down one. Top backer: "${brand.current_slogan}"`,
       images: ["/logo.jpg"],
     },
   };

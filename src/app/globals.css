@@ -1,107 +1,54 @@
 @import "tailwindcss";
 
 :root {
-  --crt-green: #39ff14;
-  --crt-amber: #ffb000;
-  --crt-red: #ff3344;
-  --crt-cyan: #00f0ff;
-  --crt-bg: #070b08;
+  --bg-thermal: #F6F7F3;
+  --ink-receipt: #1E2A3A;
+  --teal-drivein: #167A75;
+  --pickle-green: #3B7A1F;
+  --hotsauce-red: #B82E22;
+  --marquee-amber: #FFB000;
+  --paper-border: #E2E4DC;
+  --paper-card: #FFFFFF;
+  --paper-subtle: #EEF0EA;
 }
 
 body {
-  background-color: #070a08;
-  color: #39ff14;
-  font-family: var(--font-geist-mono), monospace;
+  background-color: #F6F7F3;
+  color: #1E2A3A;
+  font-family: var(--font-archivo), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* CRT Screen Vignette & Scanlines Effect */
-.crt-screen {
-  position: relative;
-  background: radial-gradient(circle at 50% 50%, rgba(18, 30, 20, 0.4) 0%, rgba(5, 10, 6, 0.95) 100%), #060907;
-  box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.9), 0 0 40px rgba(57, 255, 20, 0.08);
+/* Monospace font utility for scores and receipts */
+.font-receipt {
+  font-family: var(--font-mono), monospace;
 }
 
-.crt-amber-screen {
-  background: radial-gradient(circle at 50% 50%, rgba(35, 24, 10, 0.4) 0%, rgba(12, 8, 4, 0.98) 100%), #0a0703;
-  box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.9), 0 0 40px rgba(255, 176, 0, 0.08);
+/* Thermal paper texture & receipt styling */
+.thermal-receipt {
+  background-color: #FFFFFF;
+  border: 1px dashed #B8BCB2;
+  box-shadow: 0 4px 16px rgba(30, 42, 58, 0.06);
 }
 
-.scanlines {
-  background: linear-gradient(
-    rgba(18, 16, 16, 0) 50%, 
-    rgba(0, 0, 0, 0.45) 50%
-  ), linear-gradient(
-    90deg,
-    rgba(255, 0, 0, 0.03),
-    rgba(0, 255, 0, 0.01),
-    rgba(0, 0, 255, 0.03)
-  );
-  background-size: 100% 3px, 6px 100%;
-  pointer-events: none;
-}
-
-/* CRT Text Glows */
-.glow-green {
-  text-shadow: 0 0 6px rgba(57, 255, 20, 0.8), 0 0 16px rgba(57, 255, 20, 0.4);
-}
-
-.glow-amber {
-  text-shadow: 0 0 6px rgba(255, 176, 0, 0.8), 0 0 16px rgba(255, 176, 0, 0.4);
-}
-
-.glow-red {
-  text-shadow: 0 0 6px rgba(255, 51, 68, 0.8), 0 0 16px rgba(255, 51, 68, 0.4);
-}
-
-.glow-cyan {
-  text-shadow: 0 0 6px rgba(0, 240, 255, 0.8), 0 0 16px rgba(0, 240, 255, 0.4);
-}
-
-.box-glow-green {
-  box-shadow: 0 0 15px rgba(57, 255, 20, 0.25), inset 0 0 12px rgba(57, 255, 20, 0.1);
-}
-
-.box-glow-amber {
-  box-shadow: 0 0 15px rgba(255, 176, 0, 0.25), inset 0 0 12px rgba(255, 176, 0, 0.1);
-}
-
-.box-glow-red {
-  box-shadow: 0 0 15px rgba(255, 51, 68, 0.3), inset 0 0 12px rgba(255, 51, 68, 0.15);
-}
-
-/* Retro Flickering & Static subtle animation */
-@keyframes crt-flicker {
-  0% { opacity: 0.99; }
-  50% { opacity: 1; }
-  52% { opacity: 0.97; }
-  54% { opacity: 1; }
-  85% { opacity: 0.98; }
-  100% { opacity: 1; }
-}
-
-.animate-flicker {
-  animation: crt-flicker 0.15s infinite alternate;
-}
-
-/* Custom scrollbar for retro feel */
+/* Clean drive-in custom scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #060907;
-  border: 1px solid #1a331a;
+  background: #F6F7F3;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1f5022;
-  border-radius: 0px;
+  background: #CBD2C4;
+  border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #39ff14;
+  background: #167A75;
 }
 
-/* Toast slide-up animation */
+/* Toast animation */
 @keyframes slideUp {
   from {
     opacity: 0;
@@ -113,32 +60,6 @@ body {
   }
 }
 
-/* Marquee infinite ticker animation */
-@keyframes marquee {
-  0% {
-    transform: translateX(0%);
-  }
-  100% {
-    transform: translateX(-50%);
-  }
-}
-
-.animate-marquee {
-  display: flex;
-  width: max-content;
-  animation: marquee 35s linear infinite;
-}
-
-.mask-marquee {
-  mask-image: linear-gradient(to right, transparent 0%, black 3%, black 97%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 3%, black 97%, transparent 100%);
-}
-
-/* Ambient Cyber Glow Background */
-.cyber-arena-bg {
-  background: 
-    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(245, 158, 11, 0.08), transparent 70%),
-    radial-gradient(ellipse 60% 40% at 90% 40%, rgba(16, 185, 129, 0.05), transparent 60%),
-    radial-gradient(ellipse 60% 40% at 10% 70%, rgba(244, 63, 94, 0.05), transparent 60%),
-    #070a08;
+.animate-slide-up {
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }

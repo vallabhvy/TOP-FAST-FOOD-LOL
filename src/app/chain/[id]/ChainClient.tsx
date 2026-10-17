@@ -1,45 +1,37 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { ArrowLeft, Flame, Skull, ThumbsUp, ThumbsDown } from "lucide-react";
+import { ArrowLeft, ThumbsUp, ThumbsDown } from "lucide-react";
 import Link from "next/link";
-import { FastFoodBrand, Transaction } from "@/types";
+import { FastFoodBrand, Transaction, ActionType } from "@/types";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { sound } from "@/lib/sound";
-import { UserAvatar } from "@/components/UserAvatar";
+import { getBrandVisual } from "@/lib/brandMeta";
+import { DriveThruModal } from "@/components/DriveThruModal";
+import { ReceiptModal } from "@/components/ReceiptModal";
+import { DriveThruFooter } from "@/components/DriveThruFooter";
+import { FeedbackModal } from "@/components/FeedbackModal";
 
 export default function ChainClient({ id }: { id: string }) {
   const [brand, setBrand] = useState<FastFoodBrand | null>(null);
+  const [allBrands, setAllBrands] = useState<FastFoodBrand[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null); // Supabase Auth User
+  const [user, setUser] = useState<any>(null);
 
+  // Modal states
+  const [isOrderOpen, setIsOrderOpen] = useState(false);
+  const [orderAction, setOrderAction] = useState<ActionType>("BOOST");
+  const [isReceiptOpen, setIsReceiptOpen] = useState(false);
+  const [activeReceipt, setActiveReceipt] = useState<Transaction | null>(null);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+
+  // Replies state
   const [replies, setReplies] = useState<any[]>([]);
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const [isSubmittingReply, setIsSubmittingReply] = useState(false);
 
-  const handleTwitterLogin = async () => {
-    sound.playClick();
-    if (!supabase) return;
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "x" as any,
-      options: {
-        redirectTo: window.location.origin + `/chain/${id}`,
-      },
-    });
-    if (error) {
-      console.warn("Fallback to legacy twitter provider:", error);
-      await supabase.auth.signInWithOAuth({
-        provider: "twitter",
-        options: {
-          redirectTo: window.location.origin + `/chain/${id}`,
-        },
-      });
-    }
-  };
-
-  // Initialize deviceId for anonymous voting
   const getDeviceId = () => {
     if (typeof window === "undefined") return "anon";
     let deviceId = localStorage.getItem("deviceId");
@@ -54,40 +46,57 @@ export default function ChainClient({ id }: { id: string }) {
     const client = supabase;
     if (!isSupabaseConfigured || !client || !id) return;
 
-    // Check auth session
     client.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user || null);
     });
 
-    const fetchBrand = async () => {
-      const { data } = await client.from("brands").select("*").eq("id", id).single();
-      if (data) {
+    const loadData = async () => {
+      setLoading(true);
+
+      const [brandRes, allRes, txRes, replyRes] = await Promise.all([
+        client.from("brands").select("*").eq("id", id).single(),
+        client.from("brands").select("*").order("total_score", { ascending: false }),
+        client.from("transactions").select("*").eq("brand_id", id).order("created_at", { ascending: false }),
+        client.from("replies").select("*"),
+      ]);
+
+      if (brandRes.data) {
         setBrand({
-          id: data.id,
-          name: data.name,
-          category: data.category,
-          totalScore: data.total_score,
-          totalBoosts: data.total_boosts,
-          totalSabotages: data.total_sabotages,
-          currentSlogan: data.current_slogan,
-          sloganAuthor: data.slogan_author,
+          id: brandRes.data.id,
+          name: brandRes.data.name,
+          category: brandRes.data.category,
+          totalScore: brandRes.data.total_score,
+          totalBoosts: brandRes.data.total_boosts,
+          totalSabotages: brandRes.data.total_sabotages,
+          currentSlogan: brandRes.data.current_slogan,
+          sloganAuthor: brandRes.data.slogan_author,
           updatedAt: "Live",
-          clicks: data.clicks || 0,
-          accentColor: data.accent_color || "#f59e0b",
+          clicks: brandRes.data.clicks || 0,
+          accentColor: brandRes.data.accent_color || "#3B7A1F",
         });
       }
-    };
 
-    const fetchTransactions = async () => {
-      const { data } = await client
-        .from("transactions")
-        .select("*")
-        .eq("brand_id", id)
-        .order("created_at", { ascending: false });
+      if (allRes.data) {
+        setAllBrands(
+          allRes.data.map((row) => ({
+            id: row.id,
+            name: row.name,
+            category: row.category,
+            totalScore: row.total_score,
+            totalBoosts: row.total_boosts,
+            totalSabotages: row.total_sabotages,
+            currentSlogan: row.current_slogan,
+            sloganAuthor: row.slogan_author,
+            updatedAt: "Live",
+            clicks: row.clicks || 0,
+            accentColor: row.accent_color || "#3B7A1F",
+          }))
+        );
+      }
 
-      if (data) {
+      if (txRes.data) {
         setTransactions(
-          data.map((row) => ({
+          txRes.data.map((row) => ({
             id: row.id,
             brandId: row.brand_id,
             brandName: row.brand_name,
@@ -95,250 +104,369 @@ export default function ChainClient({ id }: { id: string }) {
             amount: row.amount,
             message: row.message,
             author: row.author,
-            timestamp: new Date(row.created_at).toLocaleString(),
+            timestamp: new Date(row.created_at).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              hour: "numeric",
+              minute: "2-digit",
+            }),
             receiptNumber: row.receipt_number,
             likes: row.likes || 0,
             dislikes: row.dislikes || 0,
           }))
         );
       }
+
+      if (replyRes.data) {
+        setReplies(replyRes.data);
+      }
+
       setLoading(false);
     };
 
-    const fetchReplies = async () => {
-      const { data } = await client
-        .from("replies")
-        .select("*")
-        .order("created_at", { ascending: true });
-      if (data) setReplies(data);
-    };
-
-    fetchBrand();
-    fetchTransactions();
-    fetchReplies();
-
-    const channel = client
-      .channel(`chain-${id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "brands", filter: `id=eq.${id}` }, fetchBrand)
-      .on("postgres_changes", { event: "*", schema: "public", table: "transactions", filter: `brand_id=eq.${id}` }, fetchTransactions)
-      .on("postgres_changes", { event: "*", schema: "public", table: "replies" }, fetchReplies)
-      .subscribe();
-
-    return () => {
-      client.removeChannel(channel);
-    };
+    loadData();
   }, [id]);
 
-  const submitReply = async (transactionId: string) => {
-    if (!supabase || !user || !replyText.trim()) return;
-    setIsSubmittingReply(true);
-    sound.playClick();
-    
-    const handle = `@${user.user_metadata?.user_name || user.user_metadata?.preferred_username || "user"}`;
-    const avatar = user.user_metadata?.avatar_url || "";
-
-    const { error } = await supabase.from("replies").insert({
-      transaction_id: transactionId,
-      author_handle: handle,
-      author_avatar: avatar,
-      message: replyText.trim(),
-    });
-
-    if (!error) {
-      setReplyText("");
-      setReplyingTo(null);
-    }
-    setIsSubmittingReply(false);
-  };
-
-
   if (loading) {
-    return <div className="min-h-screen crt-screen flex items-center justify-center text-white font-mono">LOADING TERMINAL...</div>;
+    return (
+      <div className="min-h-screen bg-[#F6F7F3] flex items-center justify-center text-[#1E2A3A] font-sans text-sm">
+        Loading...
+      </div>
+    );
   }
 
   if (!brand) {
-    return <div className="min-h-screen crt-screen flex items-center justify-center text-white font-mono">CHAIN NOT FOUND IN DATABASE.</div>;
+    return (
+      <div className="min-h-screen bg-[#F6F7F3] flex flex-col items-center justify-center text-[#1E2A3A] p-4 font-sans space-y-3">
+        <div className="text-lg font-bold">Restaurant chain not found.</div>
+        <Link
+          href="/"
+          className="text-xs font-bold text-[#167A75] hover:underline"
+        >
+          Return to leaderboard
+        </Link>
+      </div>
+    );
   }
 
+  const visual = getBrandVisual(brand.id, brand.category);
+  const currentIndex = allBrands.findIndex((b) => b.id === brand.id);
+  const currentRank = currentIndex >= 0 ? currentIndex + 1 : 1;
+  const brandAhead = currentIndex > 0 ? allBrands[currentIndex - 1] : null;
+  const brandBehind = currentIndex >= 0 && currentIndex < allBrands.length - 1 ? allBrands[currentIndex + 1] : null;
+
+  // Motivating line per Section 5.6
+  const gapBehindStr = brandAhead
+    ? `${brandAhead.totalScore - brand.totalScore + 1} points behind ${brandAhead.name} (#${currentIndex})`
+    : null;
+  const gapAheadStr = brandBehind
+    ? `${brand.totalScore - brandBehind.totalScore} points ahead of ${brandBehind.name} (#${currentIndex + 2})`
+    : null;
+
+  const handleOpenOrder = (action: ActionType) => {
+    sound.playClick();
+    setOrderAction(action);
+    setIsOrderOpen(true);
+  };
+
+  const handleOrderSubmit = async (params: {
+    brandId: string;
+    actionType: ActionType;
+    amount: number;
+    message: string;
+    author: string;
+  }) => {
+    try {
+      const res = await fetch("/api/order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(params),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        return data.error || "Server rejected the order.";
+      }
+
+      if (data.paymentLink) {
+        window.location.href = data.paymentLink;
+        return;
+      }
+    } catch {
+      // Fallback
+    }
+
+    const receiptNumber = `ORD-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+    const newTx: Transaction = {
+      id: `tx-${crypto.randomUUID()}`,
+      brandId: params.brandId,
+      brandName: brand.name,
+      actionType: params.actionType,
+      amount: params.amount,
+      message: params.message,
+      author: params.author,
+      timestamp: "Just now",
+      receiptNumber,
+    };
+
+    setTransactions((prev) => [newTx, ...prev]);
+    setIsOrderOpen(false);
+    setActiveReceipt(newTx);
+    setIsReceiptOpen(true);
+    return undefined;
+  };
+
   return (
-    <div className="min-h-screen crt-screen relative flex flex-col text-white font-mono pb-20">
-      <div className="fixed inset-0 scanlines pointer-events-none z-40 opacity-75" />
-      
+    <div className="min-h-screen bg-[#F6F7F3] text-[#1E2A3A] flex flex-col font-sans selection:bg-[#167A75] selection:text-white">
       {/* Header */}
-      <header className="border-b border-zinc-800 bg-black/80 sticky top-0 z-30 p-4">
-        <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
-          <Link 
+      <header className="border-b border-[#E2E4DC] bg-[#FFFFFF] sticky top-0 z-30">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+          <Link
             href="/"
-            onClick={() => sound.playClick()}
-            className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors"
+            className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-[#5A6878] hover:text-[#1E2A3A] transition-colors"
           >
-            <ArrowLeft className="w-5 h-5" />
-            <span>BACK TO LEADERBOARD</span>
+            <ArrowLeft className="w-4 h-4" />
+            <span>Leaderboard</span>
+          </Link>
+
+          <Link href="/" className="font-bold text-sm sm:text-base text-[#1E2A3A]">
+            topfastfood<span className="text-[#167A75]">.lol</span>
           </Link>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-4 py-8 w-full relative z-10 flex flex-col gap-8">
-        
-        {/* Brand Banner */}
-        <div className="bg-zinc-950/80 border border-zinc-800 rounded-lg p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl sm:text-5xl font-black uppercase tracking-tighter glow-green text-[#39ff14]">
-                {brand.name}
-              </h1>
-              <p className="text-zinc-400 mt-2">&quot;{brand.currentSlogan}&quot; — {brand.sloganAuthor}</p>
+      <main className="max-w-3xl mx-auto px-4 py-6 sm:py-10 flex-1 w-full space-y-8">
+        {/* Chain Header Card */}
+        <div className="bg-[#FFFFFF] border border-[#E2E4DC] rounded-xl p-5 sm:p-6 shadow-2xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start sm:items-center gap-3.5">
+              <div className="w-12 h-12 rounded-xl bg-[#F6F7F3] border border-[#E2E4DC] flex items-center justify-center text-2xl flex-shrink-0">
+                {visual.emoji}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl sm:text-3xl font-extrabold text-[#1E2A3A]">
+                    {brand.name}
+                  </h1>
+                  <span className="text-xs font-bold text-[#5A6878] bg-[#EEF0EA] px-2 py-0.5 rounded">
+                    #{currentRank}
+                  </span>
+                </div>
+                <div className="text-xs text-[#5A6878] mt-0.5 uppercase tracking-wider font-medium">
+                  {brand.category}
+                </div>
+              </div>
             </div>
-            <div className="text-right">
-              <div className="text-xs text-zinc-500 uppercase tracking-wider">WARCHEST</div>
-              <div className={`text-3xl font-black ${brand.totalScore < 0 ? "text-rose-400" : "text-[#39ff14]"}`}>
-                ${brand.totalScore}
+
+            {/* Score & Action Buttons */}
+            <div className="flex items-center justify-between sm:justify-end gap-3 pt-3 sm:pt-0 border-t sm:border-t-0 border-[#F0F2EB]">
+              <div className="text-left sm:text-right">
+                <div className="font-receipt text-2xl font-bold text-[#1E2A3A]">
+                  {brand.totalScore}
+                </div>
+                <div className="text-[10px] text-[#7A8898] uppercase tracking-wider font-medium">
+                  {brand.totalScore === 1 || brand.totalScore === -1 ? "point" : "points"}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleOpenOrder("BOOST")}
+                  className="px-3 py-2 rounded-lg bg-[#3B7A1F] hover:bg-[#2F6318] text-white text-xs font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1 shadow-2xs"
+                >
+                  <span>▲</span>
+                  <span>Boost $1</span>
+                </button>
+                <button
+                  onClick={() => handleOpenOrder("SABOTAGE")}
+                  className="px-3 py-2 rounded-lg bg-[#B82E22] hover:bg-[#99251B] text-white text-xs font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1 shadow-2xs"
+                >
+                  <span>▼</span>
+                  <span>Sabotage $1</span>
+                </button>
               </div>
             </div>
           </div>
+
+          {/* Gap to Neighbours (Section 5.6: The single most motivating line on the page) */}
+          {(gapBehindStr || gapAheadStr) && (
+            <div className="mt-4 pt-3 border-t border-[#F0F2EB] text-xs font-medium text-[#167A75]">
+              {gapBehindStr && <span>{gapBehindStr}. </span>}
+              {gapAheadStr && <span>{gapAheadStr}.</span>}
+            </div>
+          )}
         </div>
 
-        {/* Threads Section */}
-        <div>
-          <h2 className="text-xl font-bold mb-4 uppercase border-b border-zinc-800 pb-2">Warzone Threads ({transactions.length})</h2>
-          
-          <div className="space-y-4">
-            {transactions.length === 0 ? (
-              <p className="text-zinc-500 text-center py-8">No roasts or boosts yet. Be the first on the main page!</p>
-            ) : (
-              transactions.map((tx) => (
-                <div key={tx.id} className="bg-zinc-900/60 border border-zinc-800/70 rounded p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="font-bold">{tx.author}</span>
-                        {tx.actionType === "BOOST" ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-emerald-950/70 text-emerald-400 border border-emerald-800/60 font-bold">
-                            <Flame className="w-2.5 h-2.5 fill-current" /> +${tx.amount} BOOST
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-rose-950/70 text-rose-400 border border-rose-800/60 font-bold">
-                            <Skull className="w-2.5 h-2.5" /> -${tx.amount} SABOTAGE
-                          </span>
-                        )}
-                        <span className="text-zinc-500 text-[10px] ml-2">{tx.timestamp}</span>
-                      </div>
-                      <p className="text-zinc-200 text-sm mb-3">&quot;{tx.message}&quot;</p>
-                      
-                      {/* Voting & Replies */}
-                      <div className="flex items-center gap-4 text-xs font-mono mt-2">
-                        <button
-                          onClick={async () => {
-                            sound.playClick();
-                            await fetch("/api/vote", {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({ transactionId: tx.id, voteType: "LIKE", deviceId: getDeviceId() }),
-                            }).catch(() => {});
-                          }}
-                          className="flex items-center gap-1.5 text-zinc-500 hover:text-emerald-400 transition-colors"
-                        >
-                          <ThumbsUp className="w-4 h-4" /> <span>{tx.likes || 0}</span>
-                        </button>
-                        <button
-                          onClick={async () => {
-                            sound.playClick();
-                            await fetch("/api/vote", {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({ transactionId: tx.id, voteType: "DISLIKE", deviceId: getDeviceId() }),
-                            }).catch(() => {});
-                          }}
-                          className="flex items-center gap-1.5 text-zinc-500 hover:text-rose-400 transition-colors"
-                        >
-                          <ThumbsDown className="w-4 h-4" /> <span>{tx.dislikes || 0}</span>
-                        </button>
-                        
-                        {user ? (
-                          <button 
-                            onClick={() => {
-                              sound.playClick();
-                              setReplyingTo(replyingTo === tx.id ? null : tx.id);
-                            }}
-                            className="text-sky-400 hover:text-white transition-colors flex items-center gap-1 ml-4 border border-sky-900/50 bg-sky-950/30 px-2 py-1 rounded cursor-pointer"
-                          >
-                            Reply as @{user.user_metadata?.user_name || user.user_metadata?.preferred_username || "user"}
-                          </button>
-                        ) : (
-                          <button 
-                            onClick={handleTwitterLogin}
-                            className="text-zinc-500 hover:text-sky-400 transition-colors flex items-center gap-1 ml-4 border border-zinc-700 hover:border-sky-500/50 px-2 py-1 rounded cursor-pointer group"
-                          >
-                            <svg className="w-3 h-3 fill-current group-hover:text-sky-400 text-zinc-500" viewBox="0 0 24 24"><path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/></svg>
-                            Login to Reply
-                          </button>
-                        )}
-                      </div>
-
-                      {/* Reply Input Box */}
-                      {replyingTo === tx.id && (
-                        <div className="mt-4 pt-4 border-t border-zinc-800/50">
-                          <textarea
-                            autoFocus
-                            value={replyText}
-                            onChange={(e) => setReplyText(e.target.value)}
-                            placeholder={`Reply to ${tx.author}...`}
-                            className="w-full bg-black/50 border border-zinc-800 rounded p-2 text-sm text-white font-mono placeholder:text-zinc-600 focus:outline-none focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/50 resize-none"
-                            rows={3}
-                          />
-                          <div className="flex justify-end gap-2 mt-2">
-                            <button
-                              onClick={() => {
-                                sound.playClick();
-                                setReplyingTo(null);
-                                setReplyText("");
-                              }}
-                              className="px-3 py-1 text-xs text-zinc-400 hover:text-white transition-colors"
-                              disabled={isSubmittingReply}
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              onClick={() => submitReply(tx.id)}
-                              disabled={!replyText.trim() || isSubmittingReply}
-                              className="px-3 py-1 text-xs bg-sky-600 hover:bg-sky-500 text-white rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                            >
-                              {isSubmittingReply ? "Posting..." : "Post Reply"}
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Nested Replies List */}
-                      {replies.filter(r => r.transaction_id === tx.id).length > 0 && (
-                        <div className="mt-4 pt-4 border-t border-zinc-800/50 pl-4 border-l-2 border-l-zinc-800 space-y-3">
-                          {replies
-                            .filter(r => r.transaction_id === tx.id)
-                            .map((reply) => (
-                              <div key={reply.id} className="text-sm">
-                                <div className="flex items-center gap-2 mb-1 text-xs">
-                                  {reply.author_avatar && (
-                                    <img src={reply.author_avatar} alt={reply.author_handle} className="w-4 h-4 rounded-full" />
-                                  )}
-                                  <span className="font-bold text-sky-400">{reply.author_handle}</span>
-                                  <span className="text-zinc-600">{new Date(reply.created_at).toLocaleString()}</span>
-                                </div>
-                                <p className="text-zinc-300 pl-6">{reply.message}</p>
-                              </div>
-                            ))}
-                        </div>
-                      )}
-
-                    </div>
-                  </div>
+        {/* Top Backer & Stats Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="bg-[#FFFFFF] border border-[#E2E4DC] rounded-xl p-4 shadow-2xs sm:col-span-1">
+            <div className="text-[10px] text-[#7A8898] uppercase tracking-wider font-bold mb-1">
+              Top backer
+            </div>
+            {brand.sloganAuthor && brand.sloganAuthor !== "Unclaimed" ? (
+              <div>
+                <div className="font-bold text-sm text-[#1E2A3A]">
+                  {brand.sloganAuthor}
                 </div>
-              ))
+                <div className="text-xs text-[#5A6878] italic mt-0.5 truncate">
+                  &quot;{brand.currentSlogan}&quot;
+                </div>
+              </div>
+            ) : (
+              <div className="text-xs text-[#7A8898] italic">
+                No top backer yet. Boost to claim this slot.
+              </div>
             )}
+          </div>
+
+          <div className="bg-[#FFFFFF] border border-[#E2E4DC] rounded-xl p-4 shadow-2xs">
+            <div className="text-[10px] text-[#7A8898] uppercase tracking-wider font-bold mb-1">
+              Boosts
+            </div>
+            <div className="font-receipt text-xl font-bold text-[#3B7A1F]">
+              +{brand.totalBoosts}
+            </div>
+            <div className="text-[11px] text-[#7A8898] mt-0.5">points gained</div>
+          </div>
+
+          <div className="bg-[#FFFFFF] border border-[#E2E4DC] rounded-xl p-4 shadow-2xs">
+            <div className="text-[10px] text-[#7A8898] uppercase tracking-wider font-bold mb-1">
+              Sabotages
+            </div>
+            <div className="font-receipt text-xl font-bold text-[#B82E22]">
+              -{brand.totalSabotages}
+            </div>
+            <div className="text-[11px] text-[#7A8898] mt-0.5">points removed</div>
           </div>
         </div>
 
+        {/* Activity Feed */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between border-b border-[#E2E4DC] pb-2">
+            <h2 className="font-bold text-base text-[#1E2A3A]">
+              Activity ({transactions.length})
+            </h2>
+            <span className="text-xs text-[#7A8898]">Recent orders &amp; roasts</span>
+          </div>
+
+          {transactions.length === 0 ? (
+            <div className="text-center py-8 bg-[#FFFFFF] border border-dashed border-[#CBD2C4] rounded-lg text-xs text-[#7A8898]">
+              No activity for {brand.name} yet. Be the first to boost or sabotage!
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {transactions.map((tx) => {
+                const isBoost = tx.actionType === "BOOST";
+                const txReplies = replies.filter((r) => r.transaction_id === tx.id);
+
+                return (
+                  <div
+                    key={tx.id}
+                    className="bg-[#FFFFFF] border border-[#E2E4DC] rounded-lg p-3.5 space-y-2 shadow-2xs"
+                  >
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-[#1E2A3A]">{tx.author}</span>
+                        <span
+                          className={`font-bold text-[11px] px-1.5 py-0.5 rounded ${
+                            isBoost
+                              ? "bg-[#3B7A1F]/10 text-[#3B7A1F]"
+                              : "bg-[#B82E22]/10 text-[#B82E22]"
+                          }`}
+                        >
+                          {isBoost ? `▲ Boosted $${tx.amount}` : `▼ Sabotaged $${tx.amount}`}
+                        </span>
+                      </div>
+                      <span className="text-[#7A8898] text-[11px]">{tx.timestamp}</span>
+                    </div>
+
+                    <p className="text-sm text-[#1E2A3A] italic">&quot;{tx.message}&quot;</p>
+
+                    {/* Voting row */}
+                    <div className="flex items-center gap-3 pt-1 text-xs text-[#5A6878]">
+                      <button
+                        onClick={async () => {
+                          sound.playClick();
+                          await fetch("/api/vote", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              transactionId: tx.id,
+                              voteType: "LIKE",
+                              deviceId: getDeviceId(),
+                            }),
+                          }).catch(() => {});
+                        }}
+                        className="flex items-center gap-1 hover:text-[#3B7A1F] transition-colors cursor-pointer"
+                      >
+                        <ThumbsUp className="w-3.5 h-3.5" />
+                        <span>{tx.likes || 0}</span>
+                      </button>
+
+                      <button
+                        onClick={async () => {
+                          sound.playClick();
+                          await fetch("/api/vote", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              transactionId: tx.id,
+                              voteType: "DISLIKE",
+                              deviceId: getDeviceId(),
+                            }),
+                          }).catch(() => {});
+                        }}
+                        className="flex items-center gap-1 hover:text-[#B82E22] transition-colors cursor-pointer"
+                      >
+                        <ThumbsDown className="w-3.5 h-3.5" />
+                        <span>{tx.dislikes || 0}</span>
+                      </button>
+                    </div>
+
+                    {/* Threaded replies */}
+                    {txReplies.length > 0 && (
+                      <div className="mt-2 pl-3 border-l-2 border-[#CBD2C4] space-y-1 text-xs text-[#5A6878]">
+                        {txReplies.map((r) => (
+                          <div key={r.id} className="py-0.5">
+                            <span className="font-bold text-[#1E2A3A]">{r.author_handle}:</span>{" "}
+                            <span>{r.message}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </main>
+
+      {/* Footer */}
+      <DriveThruFooter onOpenFeedback={() => setIsFeedbackOpen(true)} />
+
+      {/* Modals */}
+      <DriveThruModal
+        isOpen={isOrderOpen}
+        brand={brand}
+        initialAction={orderAction}
+        onClose={() => setIsOrderOpen(false)}
+        onSubmit={handleOrderSubmit}
+      />
+
+      <ReceiptModal
+        isOpen={isReceiptOpen}
+        transaction={activeReceipt}
+        brandRank={currentRank}
+        onClose={() => setIsReceiptOpen(false)}
+      />
+
+      <FeedbackModal
+        isOpen={isFeedbackOpen}
+        onClose={() => setIsFeedbackOpen(false)}
+      />
     </div>
   );
 }
