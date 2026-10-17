@@ -177,7 +177,7 @@ export async function POST(req: Request) {
         "http://localhost:3000";
 
       let productId = process.env.DODO_PRODUCT_ID;
-      if (!productId || productId === "default_product_id") {
+      if (!productId) {
         try {
           const productList = await dodo.products.list();
           if (productList?.items?.length) {
@@ -187,8 +187,12 @@ export async function POST(req: Request) {
           console.warn("Could not auto-list Dodo products:", e);
         }
       }
-      if (!productId || productId === "default_product_id") {
-        productId = "pdt_0NpujNhrMXeqnSVhODQfh";
+
+      if (!productId) {
+        return NextResponse.json(
+          { error: "DODO_PRODUCT_ID is not configured. Please set it in your environment variables." },
+          { status: 500 }
+        );
       }
 
       // Prepare customer details (valid email required by Dodo customer API)
