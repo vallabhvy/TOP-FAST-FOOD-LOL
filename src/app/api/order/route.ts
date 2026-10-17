@@ -176,7 +176,20 @@ export async function POST(req: Request) {
         req.headers.get("origin") ||
         "http://localhost:3000";
 
-      const productId = process.env.DODO_PRODUCT_ID || "default_product_id";
+      let productId = process.env.DODO_PRODUCT_ID;
+      if (!productId || productId === "default_product_id") {
+        try {
+          const productList = await dodo.products.list();
+          if (productList?.items?.length) {
+            productId = productList.items[0].product_id;
+          }
+        } catch (e) {
+          console.warn("Could not auto-list Dodo products:", e);
+        }
+      }
+      if (!productId || productId === "default_product_id") {
+        productId = "pdt_0NpujNhrMXeqnSVhODQfh";
+      }
 
       // Prepare customer details (valid email required by Dodo customer API)
       const sanitizedAuthor =
@@ -209,10 +222,11 @@ export async function POST(req: Request) {
         paymentLink: payment.payment_link || "",
         mode: isTestMode ? "test" : "live",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("DodoPayments Error:", error);
+      const detail = error?.message || (typeof error === "string" ? error : "Payment initialization failed");
       return NextResponse.json(
-        { error: "Failed to initialize payment session. Please try again." },
+        { error: `Payment failed (${detail}). Please try again.` },
         { status: 500 }
       );
     }
