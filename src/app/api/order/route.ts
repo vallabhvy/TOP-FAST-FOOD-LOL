@@ -271,14 +271,10 @@ export async function POST(req: Request) {
       const detail =
         error?.message ||
         (typeof error === "string" ? error : "Payment initialization failed");
-      const keySnippet =
-        dodoKey.length > 8
-          ? `${dodoKey.slice(0, 4)}...${dodoKey.slice(-4)} (len: ${dodoKey.length})`
-          : `len: ${dodoKey.length}`;
 
       return NextResponse.json(
         {
-          error: `Payment failed (${detail}). Server Key: [${keySnippet}]. Please check Vercel Environment Variables.`,
+          error: `Payment failed: ${detail}. Please try again.`,
         },
         { status: 500 }
       );
