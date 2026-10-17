@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Volume2, VolumeX, Scale, ShieldCheck, FileText, Lightbulb } from "lucide-react";
+import { Scale, ShieldCheck, FileText, Lightbulb } from "lucide-react";
 import { CRTColorTheme, Transaction } from "@/types";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { sound } from "@/lib/sound";
@@ -18,7 +18,6 @@ interface HeaderProps {
 export const DriveThruHeader: React.FC<HeaderProps> = ({
   theme,
 }) => {
-  const [isMuted, setIsMuted] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
 
@@ -37,14 +36,6 @@ export const DriveThruHeader: React.FC<HeaderProps> = ({
 
 
 
-  const toggleMute = () => {
-    const nextMuted = !isMuted;
-    setIsMuted(nextMuted);
-    sound.setMuted(nextMuted);
-    if (!nextMuted) {
-      sound.playDriveThruChime();
-    }
-  };
 
   const handleTwitterLogin = async () => {
     sound.playClick();
@@ -115,19 +106,6 @@ export const DriveThruHeader: React.FC<HeaderProps> = ({
 
             {/* Quick Action Buttons placed right next to the heading */}
             <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-              {/* Music / Audio SFX Toggle */}
-              <button
-                onClick={toggleMute}
-                className="p-1 sm:p-2 rounded border border-zinc-800 bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 hover:text-white transition-all cursor-pointer flex items-center justify-center active:scale-95"
-                title={isMuted ? "Unmute Sound" : "Mute Sound"}
-                aria-label={isMuted ? "Unmute sound" : "Mute sound"}
-              >
-                {isMuted ? (
-                  <VolumeX className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-rose-400" />
-                ) : (
-                  <Volume2 className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-emerald-400" />
-                )}
-              </button>
 
               {/* Login / User Info Button */}
               {user ? (

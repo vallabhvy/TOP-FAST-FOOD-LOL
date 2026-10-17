@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { ArrowLeft, Flame, Skull, ThumbsUp, ThumbsDown, VolumeX, Volume2 } from "lucide-react";
+import { ArrowLeft, Flame, Skull, ThumbsUp, ThumbsDown } from "lucide-react";
 import Link from "next/link";
 import { FastFoodBrand, Transaction } from "@/types";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -12,7 +12,6 @@ export default function ChainClient({ id }: { id: string }) {
   const [brand, setBrand] = useState<FastFoodBrand | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isMuted, setIsMuted] = useState(false);
   const [user, setUser] = useState<any>(null); // Supabase Auth User
 
   const [replies, setReplies] = useState<any[]>([]);
@@ -52,7 +51,6 @@ export default function ChainClient({ id }: { id: string }) {
   };
 
   useEffect(() => {
-    setIsMuted(sound.getMuted());
     const client = supabase;
     if (!isSupabaseConfigured || !client || !id) return;
 
@@ -153,14 +151,6 @@ export default function ChainClient({ id }: { id: string }) {
     setIsSubmittingReply(false);
   };
 
-  const toggleMute = () => {
-    const nextMuted = !isMuted;
-    setIsMuted(nextMuted);
-    sound.setMuted(nextMuted);
-    if (!nextMuted) {
-      sound.playDriveThruChime();
-    }
-  };
 
   if (loading) {
     return <div className="min-h-screen crt-screen flex items-center justify-center text-white font-mono">LOADING TERMINAL...</div>;
@@ -185,17 +175,6 @@ export default function ChainClient({ id }: { id: string }) {
             <ArrowLeft className="w-5 h-5" />
             <span>BACK TO LEADERBOARD</span>
           </Link>
-          <button
-            onClick={toggleMute}
-            className="p-1.5 sm:p-2 rounded border border-zinc-800 bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 hover:text-white transition-all cursor-pointer flex items-center justify-center active:scale-95"
-            title={isMuted ? "Unmute Sound" : "Mute Sound"}
-          >
-            {isMuted ? (
-              <VolumeX className="w-5 h-5 text-rose-400" />
-            ) : (
-              <Volume2 className="w-5 h-5 text-emerald-400" />
-            )}
-          </button>
         </div>
       </header>
 

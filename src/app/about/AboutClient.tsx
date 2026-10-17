@@ -8,8 +8,6 @@ import {
   Skull,
   Receipt,
   HelpCircle,
-  Volume2,
-  VolumeX,
   Sparkles,
   Trophy,
   ExternalLink,
@@ -24,7 +22,6 @@ import { AddChainModal } from "@/components/AddChainModal";
 import { FeedbackModal } from "@/components/FeedbackModal";
 
 export default function AboutClient() {
-  const [isMuted, setIsMuted] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(0); // first open by default
   const [isAddChainOpen, setIsAddChainOpen] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
@@ -40,14 +37,6 @@ export default function AboutClient() {
     "BOOST" | "SABOTAGE" | null
   >(null);
 
-  const toggleMute = () => {
-    const nextMuted = !isMuted;
-    setIsMuted(nextMuted);
-    sound.setMuted(nextMuted);
-    if (!nextMuted) {
-      sound.playDriveThruChime();
-    }
-  };
 
   const handleSimBoost = () => {
     sound.playCashRegister();
@@ -151,18 +140,6 @@ export default function AboutClient() {
           </Link>
 
           <div className="flex items-center gap-3">
-            <button
-              onClick={toggleMute}
-              className="p-1.5 rounded border border-zinc-800 bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 hover:text-white transition-all cursor-pointer"
-              title={isMuted ? "Unmute Sound" : "Mute Sound"}
-              aria-label={isMuted ? "Unmute sound" : "Mute sound"}
-            >
-              {isMuted ? (
-                <VolumeX className="w-4 h-4 text-rose-400" />
-              ) : (
-                <Volume2 className="w-4 h-4 text-emerald-400" />
-              )}
-            </button>
 
             <Link
               href="/"
