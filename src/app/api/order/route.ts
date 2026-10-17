@@ -144,19 +144,24 @@ export async function POST(req: Request) {
   }
 
   // 5. Generate Payment Session or Fallback to Demo Mode
-  const dodoKey = process.env.DODO_PAYMENTS_API_KEY;
+  const rawKey = process.env.DODO_PAYMENTS_API_KEY || "";
+  const dodoKey = rawKey.trim().replace(/^["']|["']$/g, "");
 
   if (dodoKey) {
     // SECURE FLOW: Real Money via DodoPayments
     try {
       const DodoPayments = (await import("dodopayments")).default;
-      const isTestMode =
+      const isExplicitTestMode =
         process.env.DODO_PAYMENTS_ENVIRONMENT === "test_mode" ||
         dodoKey.startsWith("test_");
 
-      const dodo = new DodoPayments({
+      let currentEnv: "live_mode" | "test_mode" = isExplicitTestMode
+        ? "test_mode"
+        : "live_mode";
+
+      let dodo = new DodoPayments({
         bearerToken: dodoKey,
-        environment: isTestMode ? "test_mode" : "live_mode",
+        environment: currentEnv,
       });
 
       // Build metadata to pass to the webhook later
@@ -176,7 +181,9 @@ export async function POST(req: Request) {
         req.headers.get("origin") ||
         "http://localhost:3000";
 
-      let productId = process.env.DODO_PRODUCT_ID;
+      const rawProductId = process.env.DODO_PRODUCT_ID || "";
+      let productId = rawProductId.trim().replace(/^["']|["']$/g, "");
+
       if (!productId) {
         try {
           const productList = await dodo.products.list();
@@ -190,7 +197,10 @@ export async function POST(req: Request) {
 
       if (!productId) {
         return NextResponse.json(
-          { error: "DODO_PRODUCT_ID is not configured. Please set it in your environment variables." },
+          {
+            error:
+              "DODO_PRODUCT_ID is not configured in environment variables.",
+          },
           { status: 500 }
         );
       }
@@ -200,9 +210,9 @@ export async function POST(req: Request) {
         author.replace(/[^a-zA-Z0-9]/g, "").toLowerCase() || "fan";
       const customerEmail = `${sanitizedAuthor}@topfastfood.lol`;
 
-      const payment = await dodo.payments.create({
+      const paymentPayload = {
         billing: {
-          country: "US", // Default to US, customer can change at checkout
+          country: "US" as const, // Default to US, customer can change at checkout
         },
         customer: {
           email: customerEmail,
@@ -218,19 +228,58 @@ export async function POST(req: Request) {
         payment_link: true, // Generate hosted checkout payment link
         return_url: `${baseUrl}?payment=success`,
         metadata,
-      });
+      };
+
+      let payment;
+      try {
+        payment = await dodo.payments.create(paymentPayload);
+      } catch (firstErr: any) {
+        // If 401 Unauthorized, automatically try opposite environment (live <-> test)
+        const isAuthError =
+          firstErr?.message?.includes("Unauthorized") ||
+          firstErr?.status === 401;
+
+        if (isAuthError) {
+          const alternateEnv =
+            currentEnv === "live_mode" ? "test_mode" : "live_mode";
+          console.warn(
+            `Initial ${currentEnv} returned 401 Unauthorized, retrying with ${alternateEnv}...`
+          );
+          try {
+            dodo = new DodoPayments({
+              bearerToken: dodoKey,
+              environment: alternateEnv,
+            });
+            payment = await dodo.payments.create(paymentPayload);
+            currentEnv = alternateEnv;
+          } catch {
+            throw firstErr; // Throw original error if fallback also fails
+          }
+        } else {
+          throw firstErr;
+        }
+      }
 
       // The frontend redirects the user to this link to pay
       return NextResponse.json({
         success: true,
         paymentLink: payment.payment_link || "",
-        mode: isTestMode ? "test" : "live",
+        mode: currentEnv === "test_mode" ? "test" : "live",
       });
     } catch (error: any) {
       console.error("DodoPayments Error:", error);
-      const detail = error?.message || (typeof error === "string" ? error : "Payment initialization failed");
+      const detail =
+        error?.message ||
+        (typeof error === "string" ? error : "Payment initialization failed");
+      const keySnippet =
+        dodoKey.length > 8
+          ? `${dodoKey.slice(0, 4)}...${dodoKey.slice(-4)} (len: ${dodoKey.length})`
+          : `len: ${dodoKey.length}`;
+
       return NextResponse.json(
-        { error: `Payment failed (${detail}). Please try again.` },
+        {
+          error: `Payment failed (${detail}). Server Key: [${keySnippet}]. Please check Vercel Environment Variables.`,
+        },
         { status: 500 }
       );
     }
