@@ -77,7 +77,7 @@ export const DriveThruHeader: React.FC<HeaderProps> = ({
 
   return (
     <header
-      className={`border-b ${borderClass} bg-black/80 backdrop-blur-md sticky top-0 z-30`}
+      className={`border-b ${borderClass} bg-black/90 backdrop-blur-md relative`}
     >
       {/* Main Branding Banner */}
       <div className="max-w-7xl mx-auto px-3 sm:px-4 py-2 sm:py-3.5 flex flex-col md:flex-row md:items-center justify-between gap-2.5 sm:gap-4">

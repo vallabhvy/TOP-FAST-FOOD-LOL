@@ -13,6 +13,8 @@ import { AddChainModal } from "@/components/AddChainModal";
 import { FeedbackModal } from "@/components/FeedbackModal";
 import { LegalDisclaimer } from "@/components/LegalDisclaimer";
 import { UserAvatar } from "@/components/UserAvatar";
+import { LiveTicker } from "@/components/LiveTicker";
+import { PodiumShowcase } from "@/components/PodiumShowcase";
 import { sound } from "@/lib/sound";
 import { validateContent } from "@/lib/moderation";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -353,31 +355,48 @@ export default function Home() {
 
   return (
     <div
-      className={`min-h-screen ${screenBg} relative flex flex-col justify-between`}
+      className={`min-h-screen ${screenBg} cyber-arena-bg relative flex flex-col justify-between`}
     >
       {/* Scanline overlay */}
       <div className="fixed inset-0 scanlines pointer-events-none z-40 opacity-75" />
 
-      {/* Header */}
-      <DriveThruHeader
-        theme={theme}
-        setTheme={setTheme}
-        recentTransactions={transactions}
-        totalWarchest={totalWarchest}
-      />
+      {/* Sticky Header & Live Ticker Unit */}
+      <div className="sticky top-0 z-30 shadow-2xl backdrop-blur-md">
+        <DriveThruHeader
+          theme={theme}
+          setTheme={setTheme}
+          recentTransactions={transactions}
+          totalWarchest={totalWarchest}
+        />
+
+        {/* Live Responsive Activity Wire Ticker */}
+        <LiveTicker
+          transactions={transactions}
+          leader={sortedBrands[0]}
+        />
+      </div>
 
       {/* Main Content Area */}
-      <main className="max-w-7xl mx-auto px-4 py-8 flex-1 w-full relative z-10">
-        {/* Search Bar & Add Chain Action */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-6">
+      <main className="max-w-7xl mx-auto px-3 sm:px-4 py-6 sm:py-8 flex-1 w-full relative z-10">
+        {/* Top 3 Podium of Glory - Visible on main page when not filtering */}
+        {!searchQuery && currentPage === 1 && (
+          <PodiumShowcase
+            brands={sortedBrands}
+            onOpenOrder={handleOpenOrder}
+            onBrandClick={handleBrandClick}
+          />
+        )}
+
+        {/* Search Bar & Action Controls */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-5">
           <div className="relative w-full max-w-md">
             <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search chain or roast note..."
+              placeholder="Search 45+ fast food chains, roasts, or slogans..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-zinc-950/80 border border-zinc-800 rounded-lg pl-9 pr-3 py-2 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500 font-mono"
+              className="w-full bg-zinc-950/90 border border-zinc-800 rounded-xl pl-9 pr-3 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500/80 focus:ring-1 focus:ring-emerald-500/40 font-mono shadow-inner transition-all"
             />
           </div>
 
@@ -387,10 +406,10 @@ export default function Home() {
                 sound.playClick();
                 setIsAddChainOpen(true);
               }}
-              className="px-3.5 py-2 rounded-lg bg-emerald-950/70 hover:bg-emerald-900 border border-emerald-500/50 hover:border-emerald-400 text-emerald-300 hover:text-white font-mono text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md shadow-emerald-950/40 active:scale-95 flex-shrink-0"
+              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-950/80 to-emerald-900/60 hover:from-emerald-600 hover:to-emerald-500 hover:text-black border border-emerald-500/60 text-emerald-300 font-mono text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md shadow-emerald-950/50 active:scale-95 flex-shrink-0"
               title="Propose a fast food chain to be added"
             >
-              <Plus className="w-3.5 h-3.5 text-emerald-400" />
+              <Plus className="w-3.5 h-3.5 text-emerald-400 group-hover:text-black" />
               <span>+ ADD A CHAIN</span>
             </button>
 
@@ -399,7 +418,7 @@ export default function Home() {
                 sound.playClick();
                 setIsFeedbackOpen(true);
               }}
-              className="px-3 py-2 rounded-lg bg-zinc-900/90 hover:bg-zinc-800 border border-amber-500/40 hover:border-amber-400 text-amber-300 hover:text-white font-mono text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95 flex-shrink-0"
+              className="px-3.5 py-2 rounded-xl bg-zinc-900/90 hover:bg-zinc-800 border border-amber-500/40 hover:border-amber-400 text-amber-300 hover:text-white font-mono text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95 flex-shrink-0"
               title="Suggest a feature or report a bug directly to the creator"
             >
               <Lightbulb className="w-3.5 h-3.5 text-amber-400" />
@@ -408,8 +427,23 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Section Heading */}
+        <div className="flex items-center justify-between mb-3 px-1">
+          <div className="flex items-center gap-2 text-xs font-mono font-bold text-zinc-400 uppercase tracking-wider">
+            <Flame className="w-3.5 h-3.5 text-amber-400" />
+            <span>
+              {searchQuery
+                ? `Search Results (${filteredBrands.length})`
+                : "THE ARENA LEADERBOARD"}
+            </span>
+          </div>
+          <span className="text-[11px] font-mono text-zinc-500">
+            Page {currentPage} of {totalPages || 1} • {filteredBrands.length} Chains
+          </span>
+        </div>
+
         {/* The Leaderboard Grid / Rows */}
-        <div className="space-y-2.5">
+        <div className="space-y-3">
           {paginatedBrands.map((brand) => {
             const actualRank =
               sortedBrands.findIndex((b) => b.id === brand.id) + 1;
