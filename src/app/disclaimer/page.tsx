@@ -89,10 +89,10 @@ export default function DisclaimerPage() {
             <p>
               If you believe content on this site infringes your intellectual property or violates applicable law, please contact the creator at{" "}
               <a
-                href="mailto:support@topfastfood.lol"
+                href="mailto:team@vyncrafts.com"
                 className="text-[#167A75] font-bold hover:underline inline-flex items-center gap-1"
               >
-                <Mail className="w-3.5 h-3.5" /> support@topfastfood.lol
+                <Mail className="w-3.5 h-3.5" /> team@vyncrafts.com
               </a>{" "}
               with details. Valid requests will be processed promptly.
             </p>
@@ -101,7 +101,7 @@ export default function DisclaimerPage() {
       </main>
 
       {/* Footer */}
-      <DriveThruFooter onOpenFeedback={() => {}} />
+      <DriveThruFooter />
     </div>
   );
 }

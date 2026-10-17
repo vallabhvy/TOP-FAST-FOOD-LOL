@@ -97,7 +97,7 @@ export default function TermsPage() {
       </main>
 
       {/* Footer */}
-      <DriveThruFooter onOpenFeedback={() => {}} />
+      <DriveThruFooter />
     </div>
   );
 }

@@ -180,82 +180,52 @@ export async function POST(req: Request) {
 
   const supabase = getServerSupabase();
 
-  if (!supabase) {
-    // Local / Demo mode without database
-    return NextResponse.json(
-      {
-        success: true,
-        id,
-        receiptNumber,
-        status: "pending",
-        message:
-          "Chain submitted for review! It will be reviewed by our team before going live on the leaderboard.",
+  if (supabase) {
+    // Check if chain already exists in approved brands
+    const { data: existing } = await supabase
+      .from("brands")
+      .select("name")
+      .ilike("name", name.trim())
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      return NextResponse.json(
+        {
+          error: `"${existing[0].name}" is already on the board! Search and boost/sabotage it instead.`,
+        },
+        { status: 409, headers: rateLimitHeaders }
+      );
+    }
+  }
+
+  // Dispatch notification to creator's inbox via Web3Forms
+  try {
+    await fetch("https://api.web3forms.com/submit", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
       },
-      { headers: rateLimitHeaders }
-    );
+      body: JSON.stringify({
+        access_key: "f139beb4-ae4a-4838-8aba-d50af8577d88",
+        subject: `[TOPFASTFOOD Chain Suggestion] ${name.trim()}`,
+        from_name: "topfastfood.lol Suggestion Bot",
+        chain_name: name.trim(),
+        category: category.trim(),
+        message: message.trim(),
+        suggested_by: author.trim(),
+        submitted_at: new Date().toISOString(),
+      }),
+    });
+  } catch (err) {
+    console.warn("Web3Forms transmission error:", err);
   }
-
-  // Check for duplicate brand names
-  const { data: existing } = await supabase
-    .from("brands")
-    .select("name, status")
-    .ilike("name", name.trim())
-    .limit(1);
-
-  if (existing && existing.length > 0) {
-    const isPending = existing[0].status === "pending";
-    return NextResponse.json(
-      {
-        error: isPending
-          ? `"${existing[0].name}" has already been submitted and is currently in review!`
-          : `"${existing[0].name}" is already on the board! Search and boost/sabotage it instead.`,
-      },
-      { status: 409, headers: rateLimitHeaders }
-    );
-  }
-
-  // Insert brand with 'pending' status — will be reviewed first before appearing publicly
-  const { error: brandError } = await supabase.from("brands").insert({
-    id,
-    name: name.trim(),
-    category: category.trim(),
-    total_score: initialScore,
-    total_boosts: actionType === "BOOST" ? amount : 0,
-    total_sabotages: actionType === "SABOTAGE" ? amount : 0,
-    current_slogan: message.trim(),
-    slogan_author: author.trim(),
-    clicks: 0,
-    accent_color: accentColor || "#f59e0b",
-    status: "pending", // PENDING REVIEW
-  });
-
-  if (brandError) {
-    console.error("Supabase Brand Insert Error:", brandError);
-    return NextResponse.json(
-      { error: "Failed to queue brand for review. Please try again." },
-      { status: 500, headers: rateLimitHeaders }
-    );
-  }
-
-  // Insert transaction with pending receipt
-  await supabase.from("transactions").insert({
-    brand_id: id,
-    brand_name: name.trim(),
-    action_type: actionType,
-    amount,
-    message: message.trim(),
-    author: author.trim(),
-    receipt_number: receiptNumber,
-  });
 
   return NextResponse.json(
     {
       success: true,
-      id,
-      receiptNumber,
-      status: "pending",
       message:
-        "Chain submitted for review! Our team will verify it before it goes live on the official leaderboard.",
+        "Chain suggestion submitted! The creator will review it before adding it to the board.",
     },
     { headers: rateLimitHeaders }
   );

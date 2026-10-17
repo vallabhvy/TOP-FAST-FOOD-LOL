@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import { MessageSquare } from "lucide-react";
 import { FastFoodBrand, ActionType } from "@/types";
 import { getBrandVisual } from "@/lib/brandMeta";
 
@@ -67,7 +68,7 @@ export const ChainRow: React.FC<ChainRowProps> = ({
             )}
           </div>
 
-          {/* Subtext: Category & Top Backer Message */}
+          {/* Subtext: Category, Top Backer Message & Thread link */}
           <div className="text-xs text-[#5A6878] truncate mt-0.5 flex items-center gap-2">
             <span className="uppercase text-[10px] tracking-wider font-medium text-[#7A8898]">
               {brand.category}
@@ -81,6 +82,15 @@ export const ChainRow: React.FC<ChainRowProps> = ({
                   </span>
                 </>
               )}
+            <span>•</span>
+            <Link
+              href={`/chain/${brand.id}`}
+              className="text-[11px] text-[#167A75] hover:underline flex items-center gap-1 font-medium flex-shrink-0"
+              title={`View ${brand.name} thread & receipts`}
+            >
+              <MessageSquare className="w-3 h-3 text-[#167A75]" />
+              <span>Thread</span>
+            </Link>
           </div>
         </div>
       </div>

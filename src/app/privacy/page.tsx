@@ -93,7 +93,7 @@ export default function PrivacyPage() {
       </main>
 
       {/* Footer */}
-      <DriveThruFooter onOpenFeedback={() => {}} />
+      <DriveThruFooter />
     </div>
   );
 }

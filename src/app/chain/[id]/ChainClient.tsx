@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { ArrowLeft, ThumbsUp, ThumbsDown } from "lucide-react";
+import { ArrowLeft, ThumbsUp, ThumbsDown, MessageSquare } from "lucide-react";
 import Link from "next/link";
 import { FastFoodBrand, Transaction, ActionType } from "@/types";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -30,6 +30,7 @@ export default function ChainClient({ id }: { id: string }) {
   const [replies, setReplies] = useState<any[]>([]);
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
+  const [replyAuthor, setReplyAuthor] = useState("");
   const [isSubmittingReply, setIsSubmittingReply] = useState(false);
 
   const getDeviceId = () => {
@@ -125,7 +126,104 @@ export default function ChainClient({ id }: { id: string }) {
     };
 
     loadData();
+
+    // Realtime subscription for threaded replies and transactions
+    const channel = client
+      .channel(`chain_${id}_feed`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "replies" },
+        (payload) => {
+          setReplies((prev) => {
+            if (prev.some((r) => r.id === payload.new.id)) return prev;
+            return [...prev, payload.new];
+          });
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "transactions",
+          filter: `brand_id=eq.${id}`,
+        },
+        (payload) => {
+          const row = payload.new;
+          setTransactions((prev) => [
+            {
+              id: row.id,
+              brandId: row.brand_id,
+              brandName: row.brand_name,
+              actionType: row.action_type,
+              amount: row.amount,
+              message: row.message,
+              author: row.author,
+              timestamp: new Date(row.created_at).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+              }),
+              receiptNumber: row.receipt_number,
+              likes: row.likes || 0,
+              dislikes: row.dislikes || 0,
+            },
+            ...prev,
+          ]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      client.removeChannel(channel);
+    };
   }, [id]);
+
+  const submitReply = async (transactionId: string) => {
+    const trimmed = replyText.trim();
+    if (!trimmed) return;
+
+    setIsSubmittingReply(true);
+    sound.playClick();
+
+    const handle = user
+      ? `@${user.user_metadata?.user_name || user.user_metadata?.preferred_username || "user"}`
+      : replyAuthor.trim() || "@anon";
+
+    const avatar = user?.user_metadata?.avatar_url || "";
+
+    try {
+      const res = await fetch("/api/reply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          transactionId,
+          authorHandle: handle,
+          authorAvatar: avatar,
+          message: trimmed,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.reply) {
+        sound.playCashRegister();
+        setReplies((prev) => {
+          if (prev.some((r) => r.id === data.reply.id)) return prev;
+          return [...prev, data.reply];
+        });
+        setReplyText("");
+        setReplyingTo(null);
+      } else {
+        alert(data.error || "Failed to post reply.");
+      }
+    } catch (e) {
+      console.error("Reply error:", e);
+      alert("Failed to post reply. Please try again.");
+    } finally {
+      setIsSubmittingReply(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -384,7 +482,7 @@ export default function ChainClient({ id }: { id: string }) {
 
                     <p className="text-sm text-[#1E2A3A] italic">&quot;{tx.message}&quot;</p>
 
-                    {/* Voting row */}
+                    {/* Voting & Reply row */}
                     <div className="flex items-center gap-3 pt-1 text-xs text-[#5A6878]">
                       <button
                         onClick={async () => {
@@ -423,15 +521,138 @@ export default function ChainClient({ id }: { id: string }) {
                         <ThumbsDown className="w-3.5 h-3.5" />
                         <span>{tx.dislikes || 0}</span>
                       </button>
+
+                      <button
+                        onClick={() => {
+                          sound.playClick();
+                          setReplyingTo(replyingTo === tx.id ? null : tx.id);
+                          if (!replyAuthor && user) {
+                            setReplyAuthor(`@${user.user_metadata?.user_name || "user"}`);
+                          }
+                        }}
+                        className="flex items-center gap-1 hover:text-[#167A75] transition-colors cursor-pointer ml-1 text-[#5A6878]"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        <span>
+                          {txReplies.length > 0
+                            ? `${txReplies.length} ${txReplies.length === 1 ? "reply" : "replies"}`
+                            : "Reply"}
+                        </span>
+                      </button>
                     </div>
+
+                    {/* Inline reply compose box */}
+                    {replyingTo === tx.id && (
+                      <div className="mt-3 p-3 bg-[#F6F7F3] border border-[#CBD2C4] rounded-lg space-y-2">
+                        <div className="flex items-center justify-between text-xs text-[#5A6878]">
+                          <span>
+                            Replying to <span className="font-bold text-[#1E2A3A]">{tx.author}</span>
+                          </span>
+                          {user ? (
+                            <span className="font-mono text-[11px] text-[#167A75]">
+                              Posting as @{user.user_metadata?.user_name || "user"}
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                sound.playClick();
+                                supabase?.auth.signInWithOAuth({
+                                  provider: "twitter",
+                                  options: {
+                                    redirectTo:
+                                      typeof window !== "undefined"
+                                        ? window.location.href
+                                        : undefined,
+                                  },
+                                });
+                              }}
+                              className="text-[11px] text-[#167A75] hover:underline cursor-pointer"
+                            >
+                              Log in with X (optional)
+                            </button>
+                          )}
+                        </div>
+
+                        {!user && (
+                          <input
+                            type="text"
+                            placeholder="Your @handle or name (e.g. @fryguy)"
+                            value={replyAuthor}
+                            onChange={(e) => setReplyAuthor(e.target.value)}
+                            maxLength={30}
+                            className="w-full bg-[#FFFFFF] border border-[#CBD2C4] rounded p-1.5 text-xs text-[#1E2A3A] placeholder-[#9AA5B1] focus:outline-none focus:border-[#167A75]"
+                          />
+                        )}
+
+                        <textarea
+                          autoFocus
+                          rows={2}
+                          maxLength={140}
+                          placeholder="Write your counter-roast or reply..."
+                          value={replyText}
+                          onChange={(e) => setReplyText(e.target.value)}
+                          className="w-full bg-[#FFFFFF] border border-[#CBD2C4] rounded p-2 text-xs text-[#1E2A3A] placeholder-[#9AA5B1] focus:outline-none focus:border-[#167A75] resize-none"
+                        />
+
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] text-[#7A8898] font-mono">
+                            {replyText.length}/140
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                sound.playClick();
+                                setReplyingTo(null);
+                                setReplyText("");
+                              }}
+                              disabled={isSubmittingReply}
+                              className="px-2.5 py-1 text-xs text-[#5A6878] hover:text-[#1E2A3A] cursor-pointer"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => submitReply(tx.id)}
+                              disabled={!replyText.trim() || isSubmittingReply}
+                              className="px-3 py-1 bg-[#167A75] hover:bg-[#12625E] text-white text-xs font-bold rounded shadow-2xs transition-all cursor-pointer disabled:opacity-50"
+                            >
+                              {isSubmittingReply ? "Posting..." : "Post reply"}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Threaded replies */}
                     {txReplies.length > 0 && (
-                      <div className="mt-2 pl-3 border-l-2 border-[#CBD2C4] space-y-1 text-xs text-[#5A6878]">
+                      <div className="mt-2.5 pl-3 border-l-2 border-[#167A75]/30 space-y-2 text-xs text-[#5A6878]">
                         {txReplies.map((r) => (
                           <div key={r.id} className="py-0.5">
-                            <span className="font-bold text-[#1E2A3A]">{r.author_handle}:</span>{" "}
-                            <span>{r.message}</span>
+                            <div className="flex items-center gap-1.5 mb-0.5">
+                              {r.author_avatar ? (
+                                <img
+                                  src={r.author_avatar}
+                                  alt={r.author_handle}
+                                  className="w-3.5 h-3.5 rounded-full object-cover"
+                                />
+                              ) : (
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#167A75]" />
+                              )}
+                              <span className="font-bold text-[#1E2A3A] font-mono text-[11px]">
+                                {r.author_handle}
+                              </span>
+                              <span className="text-[10px] text-[#7A8898]">
+                                {new Date(r.created_at).toLocaleDateString("en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                  hour: "numeric",
+                                  minute: "2-digit",
+                                })}
+                              </span>
+                            </div>
+                            <p className="text-[#1E2A3A] pl-2">{r.message}</p>
                           </div>
                         ))}
                       </div>

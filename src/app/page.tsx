@@ -79,7 +79,11 @@ export default function Home() {
     if (!isSupabaseConfigured || !client) return;
 
     const fetchBrands = async () => {
-      const { data, error } = await client.from("brands").select("*");
+      const { data, error } = await client
+        .from("brands")
+        .select("*")
+        .eq("status", "approved");
+
       if (data && !error && data.length > 0) {
         setBrands(
           data.map((row) => ({
@@ -138,41 +142,47 @@ export default function Home() {
         (payload) => {
           if (payload.eventType === "UPDATE") {
             const updated = payload.new;
-            setBrands((prev) =>
-              prev.map((b) =>
-                b.id === updated.id
-                  ? {
-                      ...b,
-                      totalScore: updated.total_score,
-                      totalBoosts: updated.total_boosts,
-                      totalSabotages: updated.total_sabotages,
-                      currentSlogan: updated.current_slogan,
-                      sloganAuthor: updated.slogan_author,
-                      updatedAt: "Just now",
-                    }
-                  : b
-              )
-            );
+            if (updated.status !== "approved") {
+              setBrands((prev) => prev.filter((b) => b.id !== updated.id));
+            } else {
+              setBrands((prev) =>
+                prev.map((b) =>
+                  b.id === updated.id
+                    ? {
+                        ...b,
+                        totalScore: updated.total_score,
+                        totalBoosts: updated.total_boosts,
+                        totalSabotages: updated.total_sabotages,
+                        currentSlogan: updated.current_slogan,
+                        sloganAuthor: updated.slogan_author,
+                        updatedAt: "Just now",
+                      }
+                    : b
+                )
+              );
+            }
           } else if (payload.eventType === "INSERT") {
             const newRow = payload.new;
-            setBrands((prev) => [
-              ...prev,
-              {
-                id: newRow.id,
-                name: newRow.name,
-                alias: newRow.alias,
-                category: newRow.category,
-                totalScore: newRow.total_score || 0,
-                totalBoosts: newRow.total_boosts || 0,
-                totalSabotages: newRow.total_sabotages || 0,
-                currentSlogan: newRow.current_slogan,
-                sloganAuthor: newRow.slogan_author,
-                updatedAt: "Just now",
-                clicks: 0,
-                accentColor: newRow.accent_color || "#3B7A1F",
-                status: newRow.status || "approved",
-              },
-            ]);
+            if (newRow.status === "approved") {
+              setBrands((prev) => [
+                ...prev,
+                {
+                  id: newRow.id,
+                  name: newRow.name,
+                  alias: newRow.alias,
+                  category: newRow.category,
+                  totalScore: newRow.total_score || 0,
+                  totalBoosts: newRow.total_boosts || 0,
+                  totalSabotages: newRow.total_sabotages || 0,
+                  currentSlogan: newRow.current_slogan,
+                  sloganAuthor: newRow.slogan_author,
+                  updatedAt: "Just now",
+                  clicks: 0,
+                  accentColor: newRow.accent_color || "#3B7A1F",
+                  status: newRow.status || "approved",
+                },
+              ]);
+            }
           }
         }
       )

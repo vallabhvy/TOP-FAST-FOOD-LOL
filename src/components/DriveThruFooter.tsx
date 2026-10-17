@@ -1,15 +1,26 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
+import { FeedbackModal } from "./FeedbackModal";
 
 interface DriveThruFooterProps {
-  onOpenFeedback: () => void;
+  onOpenFeedback?: () => void;
 }
 
 export const DriveThruFooter: React.FC<DriveThruFooterProps> = ({
   onOpenFeedback,
 }) => {
+  const [internalFeedbackOpen, setInternalFeedbackOpen] = useState(false);
+
+  const handleFeedbackClick = () => {
+    if (onOpenFeedback) {
+      onOpenFeedback();
+    } else {
+      setInternalFeedbackOpen(true);
+    }
+  };
+
   return (
     <footer className="w-full border-t border-[#E2E4DC] bg-[#FFFFFF] py-6 sm:py-8 mt-12 text-xs text-[#5A6878]">
       <div className="max-w-4xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -28,7 +39,7 @@ export const DriveThruFooter: React.FC<DriveThruFooterProps> = ({
             Disclaimer
           </Link>
           <button
-            onClick={onOpenFeedback}
+            onClick={handleFeedbackClick}
             className="hover:text-[#167A75] transition-colors cursor-pointer"
           >
             Send feedback
@@ -50,6 +61,11 @@ export const DriveThruFooter: React.FC<DriveThruFooterProps> = ({
           <span>Parody community ranking</span>
         </div>
       </div>
+
+      <FeedbackModal
+        isOpen={internalFeedbackOpen}
+        onClose={() => setInternalFeedbackOpen(false)}
+      />
     </footer>
   );
 };
