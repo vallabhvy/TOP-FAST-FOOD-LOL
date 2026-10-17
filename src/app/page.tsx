@@ -54,6 +54,33 @@ export default function Home() {
   // Rate limiting state
   const [lastOrderTime, setLastOrderTime] = useState<number>(0);
 
+  // Payment success toast state
+  const [paymentToast, setPaymentToast] = useState<string | null>(null);
+
+  // Handle ?payment=success return URL from Dodo Payments checkout
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("payment") === "success") {
+      setPaymentToast("Payment successful! Your boost/sabotage is being processed...");
+      // Celebrate!
+      confetti({
+        particleCount: 150,
+        spread: 100,
+        origin: { y: 0.5 },
+        colors: ["#39ff14", "#ffb000", "#ffffff", "#22c55e"],
+      });
+      sound.playCashRegister();
+
+      // Clean the URL so refreshing doesn't re-trigger
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, "", cleanUrl);
+
+      // Auto-dismiss toast after 8 seconds
+      const timer = setTimeout(() => setPaymentToast(null), 8000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
   // Sync with Supabase on mount & subscribe to Realtime if configured
   useEffect(() => {
     const client = supabase;
@@ -505,6 +532,27 @@ export default function Home() {
 
       {/* Legal & Parody Protection Disclaimer */}
       <LegalDisclaimer theme={theme} />
+
+      {/* Payment Success Toast */}
+      {paymentToast && (
+        <div
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[9999] animate-[slideUp_0.4s_ease-out]"
+          style={{ animation: "slideUp 0.4s ease-out" }}
+        >
+          <div className="bg-emerald-950/95 border border-emerald-500/60 rounded-xl px-6 py-4 shadow-2xl shadow-emerald-500/20 backdrop-blur-md flex items-center gap-3 max-w-md">
+            <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+              <span className="text-emerald-400 text-lg">✓</span>
+            </div>
+            <p className="text-emerald-200 font-mono text-sm">{paymentToast}</p>
+            <button
+              onClick={() => setPaymentToast(null)}
+              className="text-emerald-500 hover:text-white ml-2 flex-shrink-0 cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

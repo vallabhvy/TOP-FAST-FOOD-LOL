@@ -267,14 +267,11 @@ export async function POST(req: Request) {
         mode: currentEnv === "test_mode" ? "test" : "live",
       });
     } catch (error: any) {
-      console.error("DodoPayments Error:", error);
-      const detail =
-        error?.message ||
-        (typeof error === "string" ? error : "Payment initialization failed");
-
+      console.error("DodoPayments Error:", error?.message || error);
+      // Never leak internal error details to the client
       return NextResponse.json(
         {
-          error: `Payment failed: ${detail}. Please try again.`,
+          error: "Failed to initialize payment session. Please try again.",
         },
         { status: 500 }
       );
