@@ -66,6 +66,8 @@ export async function POST(req: Request) {
     message?: string;
     author?: string;
     location?: string;
+    country?: string;
+    paymentMethod?: string;
   };
 
   try {
@@ -74,12 +76,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const { brandId, actionType, amount, message, author, location } = body;
+  const { brandId, actionType, amount, message, author, location, country, paymentMethod } = body;
 
   // 1. Validate required fields
-  if (!brandId || !actionType || !amount || !message || !author) {
+  if (!brandId || !actionType || !amount || !message || !author || !author.trim()) {
     return NextResponse.json(
-      { error: "Missing required fields: brandId, actionType, amount, message, author." },
+      { error: "An anonymous username is compulsory. Missing required field: author." },
       { status: 400 }
     );
   }
@@ -164,6 +166,21 @@ export async function POST(req: Request) {
         environment: currentEnv,
       });
 
+      // Check if user requested UPI or is located in India
+      const clientCountryHeader = (
+        req.headers.get("x-vercel-ip-country") ||
+        req.headers.get("cf-ipcountry") ||
+        req.headers.get("x-country-code") ||
+        ""
+      ).toUpperCase();
+
+      const isUpiOrIndia =
+        paymentMethod === "upi" ||
+        country?.toUpperCase() === "IN" ||
+        clientCountryHeader === "IN";
+
+      const billingCountry = isUpiOrIndia ? ("IN" as const) : ("US" as const);
+
       // Build metadata to pass to the webhook later
       const metadata = {
         brandId,
@@ -173,6 +190,7 @@ export async function POST(req: Request) {
         author,
         location: location || "",
         type: "order",
+        paymentMethod: isUpiOrIndia ? "upi" : "card",
       };
 
       // Ensure base URL exists for redirects
@@ -210,9 +228,9 @@ export async function POST(req: Request) {
         author.replace(/[^a-zA-Z0-9]/g, "").toLowerCase() || "fan";
       const customerEmail = `${sanitizedAuthor}@topfastfood.lol`;
 
-      const paymentPayload = {
+      const paymentPayload: any = {
         billing: {
-          country: "US" as const, // Default to US, customer can change at checkout
+          country: billingCountry,
         },
         customer: {
           email: customerEmail,
@@ -230,33 +248,51 @@ export async function POST(req: Request) {
         metadata,
       };
 
+      if (isUpiOrIndia) {
+        // Dodo Payments strictly requires INR billing currency for UPI (GPay, PhonePe, Paytm, QR)
+        paymentPayload.billing_currency = "INR";
+      }
+
       let payment;
       try {
         payment = await dodo.payments.create(paymentPayload);
       } catch (firstErr: any) {
-        // If 401 Unauthorized, automatically try opposite environment (live <-> test)
-        const isAuthError =
-          firstErr?.message?.includes("Unauthorized") ||
-          firstErr?.status === 401;
-
-        if (isAuthError) {
-          const alternateEnv =
-            currentEnv === "live_mode" ? "test_mode" : "live_mode";
-          console.warn(
-            `Initial ${currentEnv} returned 401 Unauthorized, retrying with ${alternateEnv}...`
-          );
+        // If billing_currency causes a mismatch (e.g. adaptive currency not configured on product), retry without billing_currency
+        if (paymentPayload.billing_currency && firstErr?.message?.toLowerCase().includes("currency")) {
+          console.warn("Retrying Dodo payment creation without explicit INR billing_currency...");
+          delete paymentPayload.billing_currency;
           try {
-            dodo = new DodoPayments({
-              bearerToken: dodoKey,
-              environment: alternateEnv,
-            });
             payment = await dodo.payments.create(paymentPayload);
-            currentEnv = alternateEnv;
           } catch {
-            throw firstErr; // Throw original error if fallback also fails
+            // Let it fall through to auth check
           }
-        } else {
-          throw firstErr;
+        }
+
+        if (!payment) {
+          // If 401 Unauthorized, automatically try opposite environment (live <-> test)
+          const isAuthError =
+            firstErr?.message?.includes("Unauthorized") ||
+            firstErr?.status === 401;
+
+          if (isAuthError) {
+            const alternateEnv =
+              currentEnv === "live_mode" ? "test_mode" : "live_mode";
+            console.warn(
+              `Initial ${currentEnv} returned 401 Unauthorized, retrying with ${alternateEnv}...`
+            );
+            try {
+              dodo = new DodoPayments({
+                bearerToken: dodoKey,
+                environment: alternateEnv,
+              });
+              payment = await dodo.payments.create(paymentPayload);
+              currentEnv = alternateEnv;
+            } catch {
+              throw firstErr; // Throw original error if fallback also fails
+            }
+          } else {
+            throw firstErr;
+          }
         }
       }
 

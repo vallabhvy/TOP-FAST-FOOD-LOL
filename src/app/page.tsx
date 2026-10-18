@@ -278,6 +278,8 @@ export default function Home() {
     message: string;
     author: string;
     location?: string;
+    country?: string;
+    paymentMethod?: string;
   }) => {
     const msgValidation = validateContent(params.message, "message");
     if (!msgValidation.isValid) return msgValidation.reason || "Invalid message.";
@@ -293,6 +295,8 @@ export default function Home() {
           message: params.message,
           author: params.author,
           location: params.location,
+          country: params.country,
+          paymentMethod: params.paymentMethod,
         }),
       });
 

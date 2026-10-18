@@ -281,6 +281,8 @@ export default function ChainClient({ id }: { id: string }) {
     amount: number;
     message: string;
     author: string;
+    country?: string;
+    paymentMethod?: string;
   }) => {
     try {
       const res = await fetch("/api/order", {
