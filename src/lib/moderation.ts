@@ -114,6 +114,26 @@ const URL_SPAM_REGEX =
 // 5. HTML / Script injection attempt
 const SCRIPT_INJECTION_REGEX = /<script\b|javascript:|onerror=|<iframe\b|<img\b/i;
 
+// 6. Factual Defamation Traps (Health code, food poisoning, named employee attacks, criminal accusations)
+// Comedic opinions ("tastes like cardboard", "trash", "overrated", "greasy") are protected parody/opinion.
+// Factual assertions of disease, contamination, or named worker misconduct carry defamation risk.
+const FACTUAL_DEFAMATION_REGEX = new RegExp(
+  [
+    "\\bfood\\s+poison(ing|ed)?\\b",
+    "\\bsalmonella\\b",
+    "\\be\\.?\\s*coli\\b",
+    "\\bmaggots?\\b",
+    "\\broaches?\\b",
+    "\\brats?\\s+in\\s+(the)?\\s*(kitchen|food|burger|fryer)\\b",
+    "\\bhealth\\s+code\\s+violat\\b",
+    "\\bhealth\\s+inspector\\b",
+    "\\bmanager\\s+at\\b",
+    "\\bemployee\\s+named\\b",
+    "\\barrested\\s+for\\b",
+  ].join("|"),
+  "i"
+);
+
 export function validateContent(
   text: string,
   field: "brand" | "message" | "author" | "location" = "message"
@@ -138,6 +158,14 @@ export function validateContent(
     return {
       isValid: false,
       reason: "HTML or script tags are strictly prohibited.",
+    };
+  }
+
+  // Check Factual Defamation allegations
+  if (FACTUAL_DEFAMATION_REGEX.test(cleanText)) {
+    return {
+      isValid: false,
+      reason: "Factual health claims, contamination allegations, or employee callouts are not permitted. Please keep roasts to opinions.",
     };
   }
 

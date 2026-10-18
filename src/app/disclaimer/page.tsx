@@ -84,17 +84,26 @@ export default function DisclaimerPage() {
 
           <section className="space-y-2 glass-card p-5 sm:p-6 rounded-2xl border border-white/[0.08] shadow-[0_4px_20px_rgba(0,0,0,0.25)]">
             <h2 className="text-base sm:text-lg font-extrabold text-white">
-              4. Contact &amp; Takedown Requests
+              4. User Content &amp; Defamation Disclaimer
             </h2>
             <p>
-              If you believe content on this site infringes your intellectual property or violates applicable law, please contact the creator at{" "}
+              Comments, roasts, and slogans posted on topfastfood.lol represent solely the individual opinions and satirical humor of third-party visitors. The platform strictly prohibits factual allegations of food contamination, regulatory violations, crimes, or attacks on named restaurant workers. If any post crosses the boundary from comedic opinion into false factual assertion, it will be promptly removed upon notice.
+            </p>
+          </section>
+
+          <section className="space-y-2 glass-card p-5 sm:p-6 rounded-2xl border border-white/[0.08] shadow-[0_4px_20px_rgba(0,0,0,0.25)]">
+            <h2 className="text-base sm:text-lg font-extrabold text-white">
+              5. Contact &amp; Takedown Requests (DMCA / IP / Defamation)
+            </h2>
+            <p>
+              If you represent a restaurant brand, trademark owner, or individual and believe any user-submitted content infringes your intellectual property, defames your brand, or violates applicable law, please contact the site creator directly at{" "}
               <a
                 href="mailto:team@vyncrafts.com"
                 className="text-cyan-400 font-bold hover:underline inline-flex items-center gap-1"
               >
                 <Mail className="w-3.5 h-3.5" /> team@vyncrafts.com
-              </a>{" "}
-              with details. Valid requests will be processed promptly.
+              </a>
+              . All valid requests are reviewed and resolved expeditiously.
             </p>
           </section>
         </div>

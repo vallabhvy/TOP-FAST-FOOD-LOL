@@ -1,7 +1,14 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { ArrowLeft, ThumbsUp, ThumbsDown, MessageSquare, X } from "lucide-react";
+import {
+  ArrowLeft,
+  ThumbsUp,
+  ThumbsDown,
+  MessageSquare,
+  X,
+  Flag,
+} from "lucide-react";
 import Link from "next/link";
 import { FastFoodBrand, Transaction, ActionType } from "@/types";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -32,7 +39,21 @@ export default function ChainClient({ id }: { id: string }) {
   const [replyText, setReplyText] = useState("");
   const [replyAuthor, setReplyAuthor] = useState("");
   const [isSubmittingReply, setIsSubmittingReply] = useState(false);
-  const [feedFilter, setFeedFilter] = useState<"ALL" | "BOOST" | "SABOTAGE">("ALL");
+  const [feedFilter, setFeedFilter] = useState<"ALL" | "BOOST" | "SABOTAGE">(
+    "ALL",
+  );
+
+  // User voting state: { [transactionId]: "LIKE" | "DISLIKE" }
+  const [userVotes, setUserVotes] = useState<
+    Record<string, "LIKE" | "DISLIKE">
+  >({});
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("userVotes");
+      if (saved) setUserVotes(JSON.parse(saved));
+    } catch {}
+  }, []);
 
   const getDeviceId = () => {
     if (typeof window === "undefined") return "anon";
@@ -42,6 +63,104 @@ export default function ChainClient({ id }: { id: string }) {
       localStorage.setItem("deviceId", deviceId);
     }
     return deviceId;
+  };
+
+  const handleVote = async (
+    transactionId: string,
+    voteType: "LIKE" | "DISLIKE",
+  ) => {
+    sound.playClick();
+
+    const currentVote = userVotes[transactionId];
+    const isToggleOff = currentVote === voteType;
+
+    // 1. Optimistic UI update on transaction counts
+    setTransactions((prev) =>
+      prev.map((t) => {
+        if (t.id !== transactionId) return t;
+        let newLikes = t.likes || 0;
+        let newDislikes = t.dislikes || 0;
+
+        if (isToggleOff) {
+          if (voteType === "LIKE") newLikes = Math.max(newLikes - 1, 0);
+          else newDislikes = Math.max(newDislikes - 1, 0);
+        } else if (currentVote) {
+          // Switch vote
+          if (voteType === "LIKE") {
+            newLikes += 1;
+            newDislikes = Math.max(newDislikes - 1, 0);
+          } else {
+            newDislikes += 1;
+            newLikes = Math.max(newLikes - 1, 0);
+          }
+        } else {
+          // New vote
+          if (voteType === "LIKE") newLikes += 1;
+          else newDislikes += 1;
+        }
+
+        return { ...t, likes: newLikes, dislikes: newDislikes };
+      }),
+    );
+
+    // 2. Optimistic update on active button state & localStorage
+    const nextVotes = { ...userVotes };
+    if (isToggleOff) {
+      delete nextVotes[transactionId];
+    } else {
+      nextVotes[transactionId] = voteType;
+    }
+    setUserVotes(nextVotes);
+    try {
+      localStorage.setItem("userVotes", JSON.stringify(nextVotes));
+    } catch {}
+
+    // 3. Server-side persistence via /api/vote
+    try {
+      const res = await fetch("/api/vote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          transactionId,
+          voteType,
+          deviceId: getDeviceId(),
+          isToggleOff,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        // Sync button state with authoritative server status
+        setUserVotes((prev) => {
+          const updated = { ...prev };
+          if (data.userVote) {
+            updated[transactionId] = data.userVote;
+          } else {
+            delete updated[transactionId];
+          }
+          try {
+            localStorage.setItem("userVotes", JSON.stringify(updated));
+          } catch {}
+          return updated;
+        });
+
+        // Sync exact counts
+        if (
+          typeof data.likes === "number" &&
+          typeof data.dislikes === "number"
+        ) {
+          setTransactions((prev) =>
+            prev.map((t) =>
+              t.id === transactionId
+                ? { ...t, likes: data.likes, dislikes: data.dislikes }
+                : t,
+            ),
+          );
+        }
+      }
+    } catch (err) {
+      console.error("Voting request failed:", err);
+    }
   };
 
   useEffect(() => {
@@ -63,8 +182,15 @@ export default function ChainClient({ id }: { id: string }) {
 
       const [brandRes, allRes, txRes, replyRes] = await Promise.all([
         client.from("brands").select("*").eq("id", id).single(),
-        client.from("brands").select("*").order("total_score", { ascending: false }),
-        client.from("transactions").select("*").eq("brand_id", id).order("created_at", { ascending: false }),
+        client
+          .from("brands")
+          .select("*")
+          .order("total_score", { ascending: false }),
+        client
+          .from("transactions")
+          .select("*")
+          .eq("brand_id", id)
+          .order("created_at", { ascending: false }),
         client.from("replies").select("*"),
       ]);
 
@@ -98,7 +224,7 @@ export default function ChainClient({ id }: { id: string }) {
             updatedAt: "Live",
             clicks: row.clicks || 0,
             accentColor: row.accent_color || "#3B7A1F",
-          }))
+          })),
         );
       }
 
@@ -121,12 +247,24 @@ export default function ChainClient({ id }: { id: string }) {
             receiptNumber: row.receipt_number,
             likes: row.likes || 0,
             dislikes: row.dislikes || 0,
-          }))
+          })),
         );
       }
 
       if (replyRes.data) {
         setReplies(replyRes.data);
+      }
+
+      // Also fetch this device's existing votes so buttons load already highlighted
+      try {
+        const dId = getDeviceId();
+        const voteRes = await fetch(`/api/vote?deviceId=${encodeURIComponent(dId)}`);
+        const voteData = await voteRes.json().catch(() => ({}));
+        if (voteData && voteData.votes) {
+          setUserVotes((prev) => ({ ...prev, ...voteData.votes }));
+        }
+      } catch (e) {
+        console.error("Failed to load user votes from server:", e);
       }
 
       setLoading(false);
@@ -145,7 +283,7 @@ export default function ChainClient({ id }: { id: string }) {
             if (prev.some((r) => r.id === payload.new.id)) return prev;
             return [...prev, payload.new];
           });
-        }
+        },
       )
       .on(
         "postgres_changes",
@@ -178,7 +316,30 @@ export default function ChainClient({ id }: { id: string }) {
             },
             ...prev,
           ]);
-        }
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "transactions",
+          filter: `brand_id=eq.${id}`,
+        },
+        (payload) => {
+          const row = payload.new;
+          setTransactions((prev) =>
+            prev.map((t) =>
+              t.id === row.id
+                ? {
+                    ...t,
+                    likes: row.likes ?? t.likes ?? 0,
+                    dislikes: row.dislikes ?? t.dislikes ?? 0,
+                  }
+                : t,
+            ),
+          );
+        },
       )
       .subscribe();
 
@@ -240,6 +401,29 @@ export default function ChainClient({ id }: { id: string }) {
     }
   };
 
+  const handleReport = async (tx: Transaction) => {
+    sound.playClick();
+    if (!confirm(`Report this post by ${tx.author} for moderation review?`))
+      return;
+
+    try {
+      await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          category: "Content Takedown Report",
+          author: "User Report",
+          message: `FLAGGED POST: ID "${tx.id}" by ${tx.author} on ${tx.brandName}: "${tx.message}"`,
+        }),
+      });
+      alert(
+        "Thank you. This post has been flagged and our moderation team has been notified for prompt review.",
+      );
+    } catch {
+      alert("Report received. Thank you.");
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-slate-300 font-sans text-sm">
@@ -256,8 +440,12 @@ export default function ChainClient({ id }: { id: string }) {
       <div className="min-h-screen flex flex-col items-center justify-center text-white p-4 font-sans space-y-4">
         <div className="glass-panel p-6 rounded-2xl border border-white/10 text-center space-y-3 max-w-sm">
           <div className="text-4xl mb-2">🍟</div>
-          <div className="text-lg font-bold text-white">Restaurant chain not found.</div>
-          <p className="text-xs text-slate-400">The chain you are looking for might not be added yet.</p>
+          <div className="text-lg font-bold text-white">
+            Restaurant chain not found.
+          </div>
+          <p className="text-xs text-slate-400">
+            The chain you are looking for might not be added yet.
+          </p>
           <Link
             href="/"
             className="inline-flex items-center gap-1.5 text-xs font-bold text-cyan-300 hover:text-cyan-200 transition-colors pt-1"
@@ -302,7 +490,10 @@ export default function ChainClient({ id }: { id: string }) {
         return data.error || "Server rejected the order.";
       }
 
-      if (typeof data.paymentLink === "string" && data.paymentLink.startsWith("https://")) {
+      if (
+        typeof data.paymentLink === "string" &&
+        data.paymentLink.startsWith("https://")
+      ) {
         window.location.href = data.paymentLink;
         return;
       }
@@ -370,6 +561,9 @@ export default function ChainClient({ id }: { id: string }) {
                   <span className="text-xs font-black text-amber-300 bg-amber-400/15 border border-amber-400/30 px-2.5 py-0.5 rounded-full">
                     #{currentRank}
                   </span>
+                  <span className="text-[10px] text-slate-400 bg-white/5 border border-white/10 px-2 py-0.5 rounded-full">
+                    Unofficial fan parody
+                  </span>
                 </div>
                 <div className="text-xs text-cyan-300 mt-1 uppercase tracking-wider font-bold">
                   {brand.category}
@@ -384,7 +578,9 @@ export default function ChainClient({ id }: { id: string }) {
                   {brand.totalScore}
                 </div>
                 <div className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold">
-                  {brand.totalScore === 1 || brand.totalScore === -1 ? "point" : "points"}
+                  {brand.totalScore === 1 || brand.totalScore === -1
+                    ? "point"
+                    : "points"}
                 </div>
               </div>
 
@@ -438,7 +634,9 @@ export default function ChainClient({ id }: { id: string }) {
               <h2 className="font-extrabold text-base text-white tracking-tight">
                 Activity ({transactions.length})
               </h2>
-              <span className="text-xs text-slate-400 font-medium">Both Boosts &amp; Sabotages with threaded replies</span>
+              <span className="text-xs text-slate-400 font-medium">
+                Both Boosts &amp; Sabotages with threaded replies
+              </span>
             </div>
 
             {/* Filter Pills */}
@@ -471,7 +669,8 @@ export default function ChainClient({ id }: { id: string }) {
               >
                 <span>▲ Boosts</span>
                 <span className="opacity-75">
-                  ({transactions.filter((t) => t.actionType === "BOOST").length})
+                  ({transactions.filter((t) => t.actionType === "BOOST").length}
+                  )
                 </span>
               </button>
               <button
@@ -488,13 +687,20 @@ export default function ChainClient({ id }: { id: string }) {
               >
                 <span>▼ Sabotages</span>
                 <span className="opacity-75">
-                  ({transactions.filter((t) => t.actionType === "SABOTAGE").length})
+                  (
+                  {
+                    transactions.filter((t) => t.actionType === "SABOTAGE")
+                      .length
+                  }
+                  )
                 </span>
               </button>
             </div>
           </div>
 
-          {transactions.filter((t) => feedFilter === "ALL" || t.actionType === feedFilter).length === 0 ? (
+          {transactions.filter(
+            (t) => feedFilter === "ALL" || t.actionType === feedFilter,
+          ).length === 0 ? (
             <div className="text-center py-10 glass-card border border-dashed border-white/10 rounded-xl text-xs text-slate-400">
               {feedFilter === "ALL"
                 ? `No activity for ${brand.name} yet. Be the first to boost or sabotage!`
@@ -505,232 +711,282 @@ export default function ChainClient({ id }: { id: string }) {
           ) : (
             <div className="space-y-3">
               {transactions
-                .filter((t) => feedFilter === "ALL" || t.actionType === feedFilter)
+                .filter(
+                  (t) => feedFilter === "ALL" || t.actionType === feedFilter,
+                )
                 .map((tx) => {
-                const isBoost = tx.actionType === "BOOST";
-                const txReplies = replies.filter((r) => r.transaction_id === tx.id);
+                  const isBoost = tx.actionType === "BOOST";
+                  const txReplies = replies.filter(
+                    (r) => r.transaction_id === tx.id,
+                  );
 
-                return (
-                  <div
-                    key={tx.id}
-                    className="glass-card rounded-xl p-4 space-y-2.5 border border-white/[0.08] hover:border-white/20 transition-all shadow-[0_4px_20px_rgba(0,0,0,0.25)]"
-                  >
-                    <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-white">{tx.author}</span>
-                        <span
-                          className={`font-black text-[11px] px-2 py-0.5 rounded-md border ${
-                            isBoost
-                              ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
-                              : "bg-rose-500/15 text-rose-300 border-rose-500/30"
-                          }`}
-                        >
-                          {isBoost ? `▲ Boosted $${tx.amount}` : `▼ Sabotaged $${tx.amount}`}
+                  return (
+                    <div
+                      key={tx.id}
+                      className="glass-card rounded-xl p-4 space-y-2.5 border border-white/[0.08] hover:border-white/20 transition-all shadow-[0_4px_20px_rgba(0,0,0,0.25)]"
+                    >
+                      <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-white">
+                            {tx.author}
+                          </span>
+                          <span
+                            className={`font-black text-[11px] px-2 py-0.5 rounded-md border ${
+                              isBoost
+                                ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+                                : "bg-rose-500/15 text-rose-300 border-rose-500/30"
+                            }`}
+                          >
+                            {isBoost
+                              ? `▲ Boosted $${tx.amount}`
+                              : `▼ Sabotaged $${tx.amount}`}
+                          </span>
+                        </div>
+                        <span className="text-slate-400 text-[11px] font-mono">
+                          {tx.timestamp}
                         </span>
                       </div>
-                      <span className="text-slate-400 text-[11px] font-mono">{tx.timestamp}</span>
-                    </div>
 
-                    <p className="text-sm text-slate-200 italic font-medium">&quot;{tx.message}&quot;</p>
+                      <p className="text-sm text-slate-200 italic font-medium">
+                        &quot;{tx.message}&quot;
+                      </p>
 
-                    {/* Voting & Reply row */}
-                    <div className="flex items-center gap-3 pt-1 text-xs text-slate-400">
-                      <button
-                        onClick={async () => {
-                          sound.playClick();
-                          await fetch("/api/vote", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                              transactionId: tx.id,
-                              voteType: "LIKE",
-                              deviceId: getDeviceId(),
-                            }),
-                          }).catch(() => {});
-                        }}
-                        className="flex items-center gap-1.5 hover:text-emerald-400 transition-colors cursor-pointer"
-                      >
-                        <ThumbsUp className="w-3.5 h-3.5" />
-                        <span>{tx.likes || 0}</span>
-                      </button>
+                      {/* Voting & Reply row */}
+                      <div className="flex items-center gap-3 pt-1 text-xs text-slate-400">
+                        <button
+                          type="button"
+                          onClick={() => handleVote(tx.id, "LIKE")}
+                          className={`flex items-center gap-1.5 transition-all cursor-pointer px-2.5 py-1 rounded-lg border ${
+                            userVotes[tx.id] === "LIKE"
+                              ? "bg-emerald-500/20 text-emerald-300 font-bold border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.25)]"
+                              : "bg-white/[0.04] hover:bg-emerald-500/10 text-slate-300 hover:text-emerald-400 border-white/[0.08]"
+                          }`}
+                          title="Upvote this comment"
+                          aria-label="Upvote this comment"
+                        >
+                          <ThumbsUp
+                            className={`w-3.5 h-3.5 transition-transform active:scale-125 ${
+                              userVotes[tx.id] === "LIKE"
+                                ? "fill-emerald-400 text-emerald-400"
+                                : ""
+                            }`}
+                          />
+                          <span>{tx.likes || 0}</span>
+                        </button>
 
-                      <button
-                        onClick={async () => {
-                          sound.playClick();
-                          await fetch("/api/vote", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                              transactionId: tx.id,
-                              voteType: "DISLIKE",
-                              deviceId: getDeviceId(),
-                            }),
-                          }).catch(() => {});
-                        }}
-                        className="flex items-center gap-1.5 hover:text-rose-400 transition-colors cursor-pointer"
-                      >
-                        <ThumbsDown className="w-3.5 h-3.5" />
-                        <span>{tx.dislikes || 0}</span>
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => handleVote(tx.id, "DISLIKE")}
+                          className={`flex items-center gap-1.5 transition-all cursor-pointer px-2.5 py-1 rounded-lg border ${
+                            userVotes[tx.id] === "DISLIKE"
+                              ? "bg-rose-500/20 text-rose-300 font-bold border-rose-500/40 shadow-[0_0_12px_rgba(244,63,94,0.25)]"
+                              : "bg-white/[0.04] hover:bg-rose-500/10 text-slate-300 hover:text-rose-400 border-white/[0.08]"
+                          }`}
+                          title="Downvote this comment"
+                          aria-label="Downvote this comment"
+                        >
+                          <ThumbsDown
+                            className={`w-3.5 h-3.5 transition-transform active:scale-125 ${
+                              userVotes[tx.id] === "DISLIKE"
+                                ? "fill-rose-400 text-rose-400"
+                                : ""
+                            }`}
+                          />
+                          <span>{tx.dislikes || 0}</span>
+                        </button>
 
-                      <button
-                        onClick={() => {
-                          sound.playClick();
-                          setReplyingTo(replyingTo === tx.id ? null : tx.id);
-                          if (!replyAuthor && user) {
-                            setReplyAuthor(`@${user.user_metadata?.user_name || "user"}`);
-                          }
-                        }}
-                        className="flex items-center gap-1.5 hover:text-cyan-300 transition-colors cursor-pointer ml-1 text-slate-400"
-                      >
-                        <MessageSquare className="w-3.5 h-3.5" />
-                        <span>
-                          {txReplies.length > 0
-                            ? `${txReplies.length} ${txReplies.length === 1 ? "reply" : "replies"}`
-                            : "Reply"}
-                        </span>
-                      </button>
-                    </div>
-
-                    {/* Inline reply compose box */}
-                    {replyingTo === tx.id && (
-                      <div className="mt-3 p-3.5 bg-slate-900/90 border border-white/15 rounded-xl space-y-2.5">
-                        <div className="flex items-center justify-between text-xs text-slate-300">
+                        <button
+                          onClick={() => {
+                            sound.playClick();
+                            setReplyingTo(replyingTo === tx.id ? null : tx.id);
+                            if (!replyAuthor && user) {
+                              setReplyAuthor(
+                                `@${user.user_metadata?.user_name || "user"}`,
+                              );
+                            }
+                          }}
+                          className="flex items-center gap-1.5 hover:text-cyan-300 transition-colors cursor-pointer ml-1 text-slate-400"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5" />
                           <span>
-                            Replying to <span className="font-bold text-white">{tx.author}</span>
+                            {txReplies.length > 0
+                              ? `${txReplies.length} ${txReplies.length === 1 ? "reply" : "replies"}`
+                              : "Reply"}
                           </span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              sound.playClick();
-                              setReplyingTo(null);
-                              setReplyText("");
-                            }}
-                            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+                        </button>
 
-                        {!user ? (
-                          <div className="py-3 px-4 rounded-xl bg-slate-800/60 border border-white/10 text-center space-y-2.5">
-                            <p className="text-xs text-slate-300 font-medium">
-                              Only accounts logged in with <span className="font-black text-white">𝕏</span> can reply to roasts.
-                            </p>
+                        <button
+                          onClick={() => handleReport(tx)}
+                          title="Report this post for review"
+                          className="flex items-center gap-1 hover:text-rose-400 transition-colors cursor-pointer ml-auto text-slate-500 hover:text-slate-300 text-[11px]"
+                        >
+                          <Flag className="w-3 h-3" />
+                          <span className="hidden sm:inline">Report</span>
+                        </button>
+                      </div>
+
+                      {/* Inline reply compose box */}
+                      {replyingTo === tx.id && (
+                        <div className="mt-3 p-3.5 bg-slate-900/90 border border-white/15 rounded-xl space-y-2.5">
+                          <div className="flex items-center justify-between text-xs text-slate-300">
+                            <span>
+                              Replying to{" "}
+                              <span className="font-bold text-white">
+                                {tx.author}
+                              </span>
+                            </span>
                             <button
                               type="button"
                               onClick={() => {
                                 sound.playClick();
-                                supabase?.auth.signInWithOAuth({
-                                  provider: "twitter",
-                                  options: {
-                                    redirectTo:
-                                      typeof window !== "undefined"
-                                        ? window.location.href
-                                        : undefined,
-                                  },
-                                });
+                                setReplyingTo(null);
+                                setReplyText("");
                               }}
-                              className="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-200 text-black text-xs font-black rounded-xl transition-all shadow-[0_0_15px_rgba(255,255,255,0.25)] cursor-pointer"
+                              className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
                             >
-                              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                              </svg>
-                              <span>Log in with 𝕏 to reply</span>
+                              <X className="w-3.5 h-3.5" />
                             </button>
                           </div>
-                        ) : (
-                          <>
-                            <div className="flex items-center gap-2 text-xs">
-                              {user.user_metadata?.avatar_url && (
-                                <img
-                                  src={user.user_metadata.avatar_url}
-                                  alt={user.user_metadata?.user_name || "user"}
-                                  className="w-4 h-4 rounded-full object-cover border border-white/20"
-                                />
-                              )}
-                              <span className="font-mono text-[11px] text-cyan-300 font-bold">
-                                Posting as @{user.user_metadata?.user_name || user.user_metadata?.preferred_username || "user"}
-                              </span>
+
+                          {!user ? (
+                            <div className="py-3 px-4 rounded-xl bg-slate-800/60 border border-white/10 text-center space-y-2.5">
+                              <p className="text-xs text-slate-300 font-medium">
+                                Only accounts logged in with{" "}
+                                <span className="font-black text-white">𝕏</span>{" "}
+                                can reply.
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  sound.playClick();
+                                  supabase?.auth.signInWithOAuth({
+                                    provider: "twitter",
+                                    options: {
+                                      redirectTo:
+                                        typeof window !== "undefined"
+                                          ? window.location.href
+                                          : undefined,
+                                    },
+                                  });
+                                }}
+                                className="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-200 text-black text-xs font-black rounded-xl transition-all shadow-[0_0_15px_rgba(255,255,255,0.25)] cursor-pointer"
+                              >
+                                <svg
+                                  className="w-3.5 h-3.5"
+                                  viewBox="0 0 24 24"
+                                  fill="currentColor"
+                                >
+                                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                                </svg>
+                                <span>Log in with 𝕏 to reply</span>
+                              </button>
                             </div>
-
-                            <textarea
-                              autoFocus
-                              rows={2}
-                              maxLength={140}
-                              placeholder="Write your counter-roast or reply..."
-                              value={replyText}
-                              onChange={(e) => setReplyText(e.target.value)}
-                              className="w-full glass-input rounded-lg p-2.5 text-xs text-white placeholder-slate-500 border border-white/15 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/40 resize-none"
-                            />
-
-                            <div className="flex items-center justify-between">
-                              <span className="text-[10px] text-slate-400 font-mono">
-                                {replyText.length}/140
-                              </span>
-                              <div className="flex items-center gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    sound.playClick();
-                                    setReplyingTo(null);
-                                    setReplyText("");
-                                  }}
-                                  disabled={isSubmittingReply}
-                                  className="px-2.5 py-1 text-xs text-slate-400 hover:text-white cursor-pointer"
-                                >
-                                  Cancel
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => submitReply(tx.id)}
-                                  disabled={!replyText.trim() || isSubmittingReply}
-                                  className="px-3.5 py-1.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-bold rounded-lg shadow-[0_0_12px_rgba(6,182,212,0.35)] transition-all cursor-pointer disabled:opacity-50"
-                                >
-                                  {isSubmittingReply ? "Posting..." : "Post reply"}
-                                </button>
+                          ) : (
+                            <>
+                              <div className="flex items-center gap-2 text-xs">
+                                {user.user_metadata?.avatar_url && (
+                                  <img
+                                    src={user.user_metadata.avatar_url}
+                                    alt={
+                                      user.user_metadata?.user_name || "user"
+                                    }
+                                    className="w-4 h-4 rounded-full object-cover border border-white/20"
+                                  />
+                                )}
+                                <span className="font-mono text-[11px] text-cyan-300 font-bold">
+                                  Posting as @
+                                  {user.user_metadata?.user_name ||
+                                    user.user_metadata?.preferred_username ||
+                                    "user"}
+                                </span>
                               </div>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    )}
 
-                    {/* Threaded replies */}
-                    {txReplies.length > 0 && (
-                      <div className="mt-2.5 pl-3 border-l-2 border-cyan-500/40 space-y-2 text-xs text-slate-300">
-                        {txReplies.map((r) => (
-                          <div key={r.id} className="py-1">
-                            <div className="flex items-center gap-1.5 mb-1">
-                              {r.author_avatar ? (
-                                <img
-                                  src={r.author_avatar}
-                                  alt={r.author_handle}
-                                  className="w-4 h-4 rounded-full object-cover border border-white/20"
-                                />
-                              ) : (
-                                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
-                              )}
-                              <span className="font-bold text-white font-mono text-[11px]">
-                                {r.author_handle}
-                              </span>
-                              <span className="text-[10px] text-slate-400">
-                                {new Date(r.created_at).toLocaleDateString("en-US", {
-                                  month: "short",
-                                  day: "numeric",
-                                  hour: "numeric",
-                                  minute: "2-digit",
-                                })}
-                              </span>
+                              <textarea
+                                autoFocus
+                                rows={2}
+                                maxLength={140}
+                                placeholder="Write your counter-roast or reply..."
+                                value={replyText}
+                                onChange={(e) => setReplyText(e.target.value)}
+                                className="w-full glass-input rounded-lg p-2.5 text-xs text-white placeholder-slate-500 border border-white/15 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/40 resize-none"
+                              />
+
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] text-slate-400 font-mono">
+                                  {replyText.length}/140
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      sound.playClick();
+                                      setReplyingTo(null);
+                                      setReplyText("");
+                                    }}
+                                    disabled={isSubmittingReply}
+                                    className="px-2.5 py-1 text-xs text-slate-400 hover:text-white cursor-pointer"
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => submitReply(tx.id)}
+                                    disabled={
+                                      !replyText.trim() || isSubmittingReply
+                                    }
+                                    className="px-3.5 py-1.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-bold rounded-lg shadow-[0_0_12px_rgba(6,182,212,0.35)] transition-all cursor-pointer disabled:opacity-50"
+                                  >
+                                    {isSubmittingReply
+                                      ? "Posting..."
+                                      : "Post reply"}
+                                  </button>
+                                </div>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Threaded replies */}
+                      {txReplies.length > 0 && (
+                        <div className="mt-2.5 pl-3 border-l-2 border-cyan-500/40 space-y-2 text-xs text-slate-300">
+                          {txReplies.map((r) => (
+                            <div key={r.id} className="py-1">
+                              <div className="flex items-center gap-1.5 mb-1">
+                                {r.author_avatar ? (
+                                  <img
+                                    src={r.author_avatar}
+                                    alt={r.author_handle}
+                                    className="w-4 h-4 rounded-full object-cover border border-white/20"
+                                  />
+                                ) : (
+                                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                                )}
+                                <span className="font-bold text-white font-mono text-[11px]">
+                                  {r.author_handle}
+                                </span>
+                                <span className="text-[10px] text-slate-400">
+                                  {new Date(r.created_at).toLocaleDateString(
+                                    "en-US",
+                                    {
+                                      month: "short",
+                                      day: "numeric",
+                                      hour: "numeric",
+                                      minute: "2-digit",
+                                    },
+                                  )}
+                                </span>
+                              </div>
+                              <p className="text-slate-200 pl-2 font-medium">
+                                {r.message}
+                              </p>
                             </div>
-                            <p className="text-slate-200 pl-2 font-medium">{r.message}</p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
             </div>
           )}
         </div>

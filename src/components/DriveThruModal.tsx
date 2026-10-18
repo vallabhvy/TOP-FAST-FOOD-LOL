@@ -351,7 +351,7 @@ export const DriveThruModal: React.FC<DriveThruModalProps> = ({
                   className="w-full bg-slate-950/80 border border-emerald-500/40 rounded-xl px-2.5 py-1.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 shadow-inner"
                 />
                 <p className="text-[10px] text-emerald-300/80 leading-tight">
-                  👑 Pinned under {brand.name} on homepage as official Top Backer motto!
+                  👑 Pinned under {brand.name} as Top Fan Slogan (unofficial fan commentary)
                 </p>
               </div>
             ) : (
@@ -471,11 +471,17 @@ export const DriveThruModal: React.FC<DriveThruModalProps> = ({
                     ? `Pay $${amount} and boost`
                     : `Pay $${amount} and sabotage`}
             </button>
-            <p className="text-center text-[10px] text-slate-400 mt-1.5">
-              {paymentMethod === "upi"
-                ? "Instant UPI QR & Intent via Google Pay, PhonePe, Paytm."
-                : `Your $${amount} goes to the site's creator, not the restaurant.`}
-            </p>
+            <div className="text-center text-[10px] text-slate-400 mt-2 space-y-1">
+              <p>
+                Voluntary non-refundable entertainment micro-tip • 18+ • Not affiliated with {brand.name}.
+              </p>
+              <p className="text-[9px] text-slate-500">
+                By clicking Pay, you agree to the{" "}
+                <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline text-slate-400 hover:text-white">Terms</a>
+                {" "}and{" "}
+                <a href="/disclaimer" target="_blank" rel="noopener noreferrer" className="underline text-slate-400 hover:text-white">Disclaimer</a>.
+              </p>
+            </div>
           </div>
         </form>
       </div>
