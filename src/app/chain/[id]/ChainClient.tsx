@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { ArrowLeft, ThumbsUp, ThumbsDown, MessageSquare } from "lucide-react";
+import { ArrowLeft, ThumbsUp, ThumbsDown, MessageSquare, X } from "lucide-react";
 import Link from "next/link";
 import { FastFoodBrand, Transaction, ActionType } from "@/types";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -32,6 +32,7 @@ export default function ChainClient({ id }: { id: string }) {
   const [replyText, setReplyText] = useState("");
   const [replyAuthor, setReplyAuthor] = useState("");
   const [isSubmittingReply, setIsSubmittingReply] = useState(false);
+  const [feedFilter, setFeedFilter] = useState<"ALL" | "BOOST" | "SABOTAGE">("ALL");
 
   const getDeviceId = () => {
     if (typeof window === "undefined") return "anon";
@@ -48,6 +49,12 @@ export default function ChainClient({ id }: { id: string }) {
     if (!isSupabaseConfigured || !client || !id) return;
 
     client.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user || null);
+    });
+
+    const {
+      data: { subscription },
+    } = client.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user || null);
     });
 
@@ -184,19 +191,27 @@ export default function ChainClient({ id }: { id: string }) {
     const trimmed = replyText.trim();
     if (!trimmed) return;
 
+    if (!user) {
+      alert("You must log in with your X account to reply.");
+      return;
+    }
+
     setIsSubmittingReply(true);
     sound.playClick();
 
-    const handle = user
-      ? `@${user.user_metadata?.user_name || user.user_metadata?.preferred_username || "user"}`
-      : replyAuthor.trim() || "@anon";
-
+    const handle = `@${user.user_metadata?.user_name || user.user_metadata?.preferred_username || "user"}`;
     const avatar = user?.user_metadata?.avatar_url || "";
+
+    const sessionRes = await supabase?.auth.getSession();
+    const token = sessionRes?.data?.session?.access_token;
 
     try {
       const res = await fetch("/api/reply", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           transactionId,
           authorHandle: handle,
@@ -205,7 +220,7 @@ export default function ChainClient({ id }: { id: string }) {
         }),
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (res.ok && data.reply) {
         sound.playCashRegister();
         setReplies((prev) => {
@@ -287,7 +302,7 @@ export default function ChainClient({ id }: { id: string }) {
         return data.error || "Server rejected the order.";
       }
 
-      if (data.paymentLink) {
+      if (typeof data.paymentLink === "string" && data.paymentLink.startsWith("https://")) {
         window.location.href = data.paymentLink;
         return;
       }
@@ -418,20 +433,80 @@ export default function ChainClient({ id }: { id: string }) {
 
         {/* Activity Feed */}
         <div className="space-y-3.5">
-          <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
-            <h2 className="font-extrabold text-base text-white tracking-tight">
-              Activity ({transactions.length})
-            </h2>
-            <span className="text-xs text-slate-400 font-medium">Recent orders &amp; roasts</span>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-white/[0.08] pb-3 gap-2.5">
+            <div>
+              <h2 className="font-extrabold text-base text-white tracking-tight">
+                Activity ({transactions.length})
+              </h2>
+              <span className="text-xs text-slate-400 font-medium">Both Boosts &amp; Sabotages with threaded replies</span>
+            </div>
+
+            {/* Filter Pills */}
+            <div className="flex items-center gap-1 bg-white/[0.04] p-1 rounded-xl border border-white/10 text-xs font-bold self-start sm:self-auto">
+              <button
+                type="button"
+                onClick={() => {
+                  sound.playClick();
+                  setFeedFilter("ALL");
+                }}
+                className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                  feedFilter === "ALL"
+                    ? "bg-white/20 text-white shadow-sm"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                All ({transactions.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  sound.playClick();
+                  setFeedFilter("BOOST");
+                }}
+                className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
+                  feedFilter === "BOOST"
+                    ? "bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 shadow-sm"
+                    : "text-slate-400 hover:text-emerald-300"
+                }`}
+              >
+                <span>▲ Boosts</span>
+                <span className="opacity-75">
+                  ({transactions.filter((t) => t.actionType === "BOOST").length})
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  sound.playClick();
+                  setFeedFilter("SABOTAGE");
+                }}
+                className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
+                  feedFilter === "SABOTAGE"
+                    ? "bg-rose-500/25 text-rose-300 border border-rose-500/40 shadow-sm"
+                    : "text-slate-400 hover:text-rose-300"
+                }`}
+              >
+                <span>▼ Sabotages</span>
+                <span className="opacity-75">
+                  ({transactions.filter((t) => t.actionType === "SABOTAGE").length})
+                </span>
+              </button>
+            </div>
           </div>
 
-          {transactions.length === 0 ? (
+          {transactions.filter((t) => feedFilter === "ALL" || t.actionType === feedFilter).length === 0 ? (
             <div className="text-center py-10 glass-card border border-dashed border-white/10 rounded-xl text-xs text-slate-400">
-              No activity for {brand.name} yet. Be the first to boost or sabotage!
+              {feedFilter === "ALL"
+                ? `No activity for ${brand.name} yet. Be the first to boost or sabotage!`
+                : feedFilter === "BOOST"
+                  ? `No boosts for ${brand.name} yet. Be the first to boost!`
+                  : `No sabotages for ${brand.name} yet. Be the first to roast!`}
             </div>
           ) : (
             <div className="space-y-3">
-              {transactions.map((tx) => {
+              {transactions
+                .filter((t) => feedFilter === "ALL" || t.actionType === feedFilter)
+                .map((tx) => {
                 const isBoost = tx.actionType === "BOOST";
                 const txReplies = replies.filter((r) => r.transaction_id === tx.id);
 
@@ -519,16 +594,29 @@ export default function ChainClient({ id }: { id: string }) {
 
                     {/* Inline reply compose box */}
                     {replyingTo === tx.id && (
-                      <div className="mt-3 p-3.5 bg-slate-900/80 border border-white/15 rounded-xl space-y-2.5">
+                      <div className="mt-3 p-3.5 bg-slate-900/90 border border-white/15 rounded-xl space-y-2.5">
                         <div className="flex items-center justify-between text-xs text-slate-300">
                           <span>
                             Replying to <span className="font-bold text-white">{tx.author}</span>
                           </span>
-                          {user ? (
-                            <span className="font-mono text-[11px] text-cyan-300 font-semibold">
-                              Posting as @{user.user_metadata?.user_name || "user"}
-                            </span>
-                          ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              sound.playClick();
+                              setReplyingTo(null);
+                              setReplyText("");
+                            }}
+                            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+
+                        {!user ? (
+                          <div className="py-3 px-4 rounded-xl bg-slate-800/60 border border-white/10 text-center space-y-2.5">
+                            <p className="text-xs text-slate-300 font-medium">
+                              Only accounts logged in with <span className="font-black text-white">𝕏</span> can reply to roasts.
+                            </p>
                             <button
                               type="button"
                               onClick={() => {
@@ -543,61 +631,68 @@ export default function ChainClient({ id }: { id: string }) {
                                   },
                                 });
                               }}
-                              className="text-[11px] text-cyan-400 hover:text-cyan-300 hover:underline cursor-pointer font-medium"
+                              className="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-200 text-black text-xs font-black rounded-xl transition-all shadow-[0_0_15px_rgba(255,255,255,0.25)] cursor-pointer"
                             >
-                              Log in with X (optional)
-                            </button>
-                          )}
-                        </div>
-
-                        {!user && (
-                          <input
-                            type="text"
-                            placeholder="Your @handle or name (e.g. @fryguy)"
-                            value={replyAuthor}
-                            onChange={(e) => setReplyAuthor(e.target.value)}
-                            maxLength={30}
-                            className="w-full glass-input rounded-lg p-2 text-xs text-white placeholder-slate-500 border border-white/15 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/40"
-                          />
-                        )}
-
-                        <textarea
-                          autoFocus
-                          rows={2}
-                          maxLength={140}
-                          placeholder="Write your counter-roast or reply..."
-                          value={replyText}
-                          onChange={(e) => setReplyText(e.target.value)}
-                          className="w-full glass-input rounded-lg p-2.5 text-xs text-white placeholder-slate-500 border border-white/15 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/40 resize-none"
-                        />
-
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] text-slate-400 font-mono">
-                            {replyText.length}/140
-                          </span>
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                sound.playClick();
-                                setReplyingTo(null);
-                                setReplyText("");
-                              }}
-                              disabled={isSubmittingReply}
-                              className="px-2.5 py-1 text-xs text-slate-400 hover:text-white cursor-pointer"
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => submitReply(tx.id)}
-                              disabled={!replyText.trim() || isSubmittingReply}
-                              className="px-3.5 py-1.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-bold rounded-lg shadow-[0_0_12px_rgba(6,182,212,0.35)] transition-all cursor-pointer disabled:opacity-50"
-                            >
-                              {isSubmittingReply ? "Posting..." : "Post reply"}
+                              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                              </svg>
+                              <span>Log in with 𝕏 to reply</span>
                             </button>
                           </div>
-                        </div>
+                        ) : (
+                          <>
+                            <div className="flex items-center gap-2 text-xs">
+                              {user.user_metadata?.avatar_url && (
+                                <img
+                                  src={user.user_metadata.avatar_url}
+                                  alt={user.user_metadata?.user_name || "user"}
+                                  className="w-4 h-4 rounded-full object-cover border border-white/20"
+                                />
+                              )}
+                              <span className="font-mono text-[11px] text-cyan-300 font-bold">
+                                Posting as @{user.user_metadata?.user_name || user.user_metadata?.preferred_username || "user"}
+                              </span>
+                            </div>
+
+                            <textarea
+                              autoFocus
+                              rows={2}
+                              maxLength={140}
+                              placeholder="Write your counter-roast or reply..."
+                              value={replyText}
+                              onChange={(e) => setReplyText(e.target.value)}
+                              className="w-full glass-input rounded-lg p-2.5 text-xs text-white placeholder-slate-500 border border-white/15 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/40 resize-none"
+                            />
+
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] text-slate-400 font-mono">
+                                {replyText.length}/140
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    sound.playClick();
+                                    setReplyingTo(null);
+                                    setReplyText("");
+                                  }}
+                                  disabled={isSubmittingReply}
+                                  className="px-2.5 py-1 text-xs text-slate-400 hover:text-white cursor-pointer"
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => submitReply(tx.id)}
+                                  disabled={!replyText.trim() || isSubmittingReply}
+                                  className="px-3.5 py-1.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-bold rounded-lg shadow-[0_0_12px_rgba(6,182,212,0.35)] transition-all cursor-pointer disabled:opacity-50"
+                                >
+                                  {isSubmittingReply ? "Posting..." : "Post reply"}
+                                </button>
+                              </div>
+                            </div>
+                          </>
+                        )}
                       </div>
                     )}
 

@@ -77,38 +77,32 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
     const senderIdentifier = author.trim() || "Anonymous Fan";
 
     const payload = {
-      access_key: "f139beb4-ae4a-4838-8aba-d50af8577d88",
-      subject: `[TOPFASTFOOD ${categoryTitle}] From ${senderIdentifier}`,
-      from_name: "topfastfood.lol Feedback",
-      name: senderIdentifier,
-      email: email.trim() || undefined,
       category: categoryTitle,
+      author: senderIdentifier,
+      email: email.trim() || undefined,
       message: trimmedMsg,
-      page_url: typeof window !== "undefined" ? window.location.href : "unknown",
+      pageUrl: typeof window !== "undefined" ? window.location.href : "unknown",
     };
 
     try {
-      const response = await fetch("https://api.web3forms.com/submit", {
+      const response = await fetch("/api/feedback", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Accept: "application/json",
         },
         body: JSON.stringify(payload),
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
-      if (response.ok && data.success !== false) {
+      if (response.ok && data.success) {
         sound.playCashRegister();
         setIsSuccess(true);
       } else {
-        setErrorMessage(data.message || "Failed to deliver feedback. Please try again.");
+        setErrorMessage(data.error || "Failed to deliver feedback. Please try again.");
       }
-    } catch (err: unknown) {
-      console.error("Web3Forms submission error:", err);
-      const msg = err instanceof Error ? err.message : String(err);
-      setErrorMessage(`Failed to send: ${msg}`);
+    } catch {
+      setErrorMessage("Network error occurred. Please try again.");
     } finally {
       setIsSubmitting(false);
     }

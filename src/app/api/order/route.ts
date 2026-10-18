@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { validateContent } from "@/lib/moderation";
+import { isValidOrigin, getClientIp, createRateLimiter } from "@/lib/security";
 
 const ALLOWED_AMOUNTS = [1, 2, 5, 10];
 const ALLOWED_ACTIONS = ["BOOST", "SABOTAGE"] as const;
@@ -14,34 +15,15 @@ function getServerSupabase() {
   return createClient(supabaseUrl, supabaseServiceKey);
 }
 
-// Simple in-memory rate limiter per IP (resets on deploy/restart — fine for edge cases)
-const rateLimitMap = new Map<string, number>();
-const RATE_LIMIT_MS = 2000;
-
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const last = rateLimitMap.get(ip);
-  if (last && now - last < RATE_LIMIT_MS) {
-    return true;
-  }
-  rateLimitMap.set(ip, now);
-  // Clean up old entries every ~100 requests
-  if (rateLimitMap.size > 500) {
-    const cutoff = now - RATE_LIMIT_MS * 10;
-    for (const [key, time] of rateLimitMap.entries()) {
-      if (time < cutoff) rateLimitMap.delete(key);
-    }
-  }
-  return false;
-}
+// Rate limiter: Maximum 3 order creation attempts per 2 seconds per IP
+const orderLimiter = createRateLimiter({
+  windowMs: 2000,
+  maxRequests: 3,
+});
 
 export async function POST(req: Request) {
-  // CORS / CSRF Protection: Ensure request comes from our frontend
-  const origin = req.headers.get("origin") || req.headers.get("referer") || "";
-  const isLocalhost = origin.includes("localhost:3000") || origin.includes("127.0.0.1:3000");
-  const isProductionDomain = origin.includes("topfastfood.lol");
-
-  if (!isLocalhost && !isProductionDomain) {
+  // CORS / CSRF Protection: Ensure request strictly comes from our frontend
+  if (!isValidOrigin(req)) {
     return NextResponse.json(
       { error: "Unauthorized request origin." },
       { status: 403 }
@@ -49,9 +31,9 @@ export async function POST(req: Request) {
   }
 
   // Rate limiting by IP
-  const forwarded = req.headers.get("x-forwarded-for");
-  const ip = forwarded?.split(",")[0]?.trim() || "unknown";
-  if (isRateLimited(ip)) {
+  const ip = getClientIp(req);
+  const { isLimited } = orderLimiter.check(ip);
+  if (isLimited) {
     return NextResponse.json(
       { error: "Too many requests. Please wait a moment." },
       { status: 429 }

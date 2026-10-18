@@ -77,32 +77,8 @@ export const AddChainModal: React.FC<AddChainModalProps> = ({
     sound.playClick();
 
     try {
-      // 1. Dispatch notification to Web3Forms inbox
-      const web3Payload = {
-        access_key: "f139beb4-ae4a-4838-8aba-d50af8577d88",
-        subject: `[TOPFASTFOOD Chain Suggestion] ${trimmedName}`,
-        from_name: "topfastfood.lol Chain Bot",
-        name: finalAuthor,
-        chain_name: trimmedName,
-        category,
-        initial_slogan: trimmedSlogan,
-        submitted_by: finalAuthor,
-        submitted_at: new Date().toISOString(),
-      };
-
-      const web3Promise = fetch("https://api.web3forms.com/submit", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify(web3Payload),
-      }).catch((err) => {
-        console.warn("Web3Forms transmission warning:", err);
-      });
-
-      // 2. Queue in backend database for review
-      const dbPromise = fetch("/api/add-chain", {
+      // Queue suggestion in backend API (which sends the notification securely)
+      const res = await fetch("/api/add-chain", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -115,8 +91,7 @@ export const AddChainModal: React.FC<AddChainModalProps> = ({
         }),
       });
 
-      const [res] = await Promise.all([dbPromise, web3Promise]);
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
         setErrorMessage(data.error || "Failed to submit chain. Please try again.");

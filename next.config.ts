@@ -31,7 +31,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: "Content-Security-Policy",
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' https://unavatar.io https://ui-avatars.com https://pbs.twimg.com https://abs.twimg.com https://api.dicebear.com data:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://unavatar.io;",
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' https://unavatar.io https://ui-avatars.com https://pbs.twimg.com https://abs.twimg.com https://api.dicebear.com https://avatars.githubusercontent.com https://lh3.googleusercontent.com data:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://unavatar.io;",
           },
         ],
       },
@@ -58,6 +58,14 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "api.dicebear.com",
+      },
+      {
+        protocol: "https",
+        hostname: "avatars.githubusercontent.com",
+      },
+      {
+        protocol: "https",
+        hostname: "lh3.googleusercontent.com",
       },
     ],
   },

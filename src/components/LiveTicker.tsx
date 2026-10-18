@@ -52,7 +52,7 @@ export const LiveTicker: React.FC<LiveTickerProps> = ({
                       : "font-bold text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.4)]"
                   }
                 >
-                  {isBoost ? "boosted" : "sabotaged"}
+                  {isBoost ? `boosted (+$${tx.amount})` : `sabotaged (-$${tx.amount})`}
                 </span>{" "}
                 <Link
                   href={`/chain/${tx.brandId}`}

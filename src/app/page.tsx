@@ -306,7 +306,7 @@ export default function Home() {
         return data.error || "Server rejected the order. Please try again.";
       }
 
-      if (data.paymentLink) {
+      if (typeof data.paymentLink === "string" && data.paymentLink.startsWith("https://")) {
         window.location.href = data.paymentLink;
         return;
       }

@@ -1,45 +1,29 @@
 import { NextResponse } from "next/server";
-import { headers } from "next/headers";
 import { createClient } from "@supabase/supabase-js";
+import { isValidOrigin, getClientIp, createRateLimiter, isValidUUID } from "@/lib/security";
 
 // Initialize Supabase admin client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
-const supabase = supabaseUrl && supabaseServiceKey
-  ? createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    })
-  : null;
+const supabase =
+  supabaseUrl && supabaseServiceKey
+    ? createClient(supabaseUrl, supabaseServiceKey, {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      })
+    : null;
 
-// In-memory rate limiter: maximum 30 votes per minute per IP
-const voteRateLimitMap = new Map<string, { count: number; resetAt: number }>();
-const VOTE_WINDOW_MS = 60 * 1000;
-const MAX_VOTES_PER_MINUTE = 30;
-
-function checkVoteRateLimit(ip: string): boolean {
-  const now = Date.now();
-  const bucket = voteRateLimitMap.get(ip);
-  if (!bucket || now >= bucket.resetAt) {
-    voteRateLimitMap.set(ip, { count: 1, resetAt: now + VOTE_WINDOW_MS });
-    return true;
-  }
-  if (bucket.count >= MAX_VOTES_PER_MINUTE) {
-    return false;
-  }
-  bucket.count++;
-  return true;
-}
+// Rate limiter: maximum 30 votes per minute per IP
+const voteLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  maxRequests: 30,
+});
 
 export async function POST(req: Request) {
   // 1. Origin / CSRF Verification
-  const origin = req.headers.get("origin") || req.headers.get("referer") || "";
-  const isLocalhost = origin.includes("localhost:3000") || origin.includes("127.0.0.1:3000");
-  const isProductionDomain = origin.includes("topfastfood.lol");
-
-  if (!isLocalhost && !isProductionDomain) {
+  if (!isValidOrigin(req)) {
     return NextResponse.json(
       { error: "Unauthorized request origin." },
       { status: 403 }
@@ -47,51 +31,79 @@ export async function POST(req: Request) {
   }
 
   // 2. IP Rate Limiting
-  const forwarded = req.headers.get("x-forwarded-for");
-  const ip = forwarded?.split(",")[0]?.trim() || "unknown";
-  if (!checkVoteRateLimit(ip)) {
+  const ip = getClientIp(req);
+  const { isLimited, resetInSec } = voteLimiter.check(ip);
+  if (isLimited) {
     return NextResponse.json(
-      { error: "Rate limit exceeded. Too many votes from this network." },
+      { error: `Too many votes. Please wait ${resetInSec} seconds before voting again.` },
       { status: 429 }
     );
   }
 
   try {
     // 3. Parse & Validate Request
-    const body = await req.json();
+    let body: {
+      transactionId?: string;
+      voteType?: string;
+      deviceId?: string;
+    };
+
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+    }
+
     const { transactionId, voteType, deviceId } = body;
 
-    if (
-      !transactionId ||
-      typeof transactionId !== "string" ||
-      !deviceId ||
-      typeof deviceId !== "string" ||
-      (voteType !== "LIKE" && voteType !== "DISLIKE")
-    ) {
-      return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+    // Strict UUID validation on transactionId to prevent PostgreSQL cast errors
+    if (!isValidUUID(transactionId)) {
+      return NextResponse.json(
+        { error: "Invalid transaction ID format." },
+        { status: 400 }
+      );
     }
+
+    if (voteType !== "LIKE" && voteType !== "DISLIKE") {
+      return NextResponse.json(
+        { error: "Vote type must be LIKE or DISLIKE." },
+        { status: 400 }
+      );
+    }
+
+    // Sanitize device identifier (prevent SQL or buffer manipulation)
+    const cleanDeviceId =
+      typeof deviceId === "string" && /^[a-zA-Z0-9_-]{4,64}$/.test(deviceId.trim())
+        ? deviceId.trim()
+        : `anon_${ip.replace(/[^a-zA-Z0-9]/g, "")}`;
 
     if (!supabase) {
-      return NextResponse.json({ error: "Supabase not configured" }, { status: 500 });
+      return NextResponse.json(
+        { error: "Database not configured." },
+        { status: 500 }
+      );
     }
 
-    // 3. Call Secure RPC Function
+    // 4. Call Secure RPC Function
     const { data, error } = await supabase.rpc("vote_transaction", {
       p_transaction_id: transactionId,
-      p_ip_address: deviceId, // We use the deviceId as the 'ip_address' field in the DB to avoid schema changes
-      p_vote_type: voteType
+      p_ip_address: cleanDeviceId,
+      p_vote_type: voteType,
     });
 
     if (error) {
       console.error("Voting RPC Error:", error);
-      return NextResponse.json({ error: "Failed to process vote" }, { status: 500 });
+      return NextResponse.json(
+        { error: "Failed to process vote." },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ success: true, result: data });
   } catch (error) {
-    console.error("API error:", error);
+    console.error("API error in /api/vote:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Internal server error." },
       { status: 500 }
     );
   }

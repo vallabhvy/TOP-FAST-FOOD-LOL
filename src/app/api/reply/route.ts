@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { validateContent } from "@/lib/moderation";
+import {
+  isValidOrigin,
+  getClientIp,
+  createRateLimiter,
+  isValidUUID,
+  isValidAvatarUrl,
+} from "@/lib/security";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -15,53 +22,88 @@ const supabase =
     : null;
 
 // Rate limiting: 10 replies per minute per IP
-const replyRateLimitMap = new Map<string, { count: number; resetAt: number }>();
-const WINDOW_MS = 60 * 1000;
-const MAX_REPLIES_PER_WINDOW = 10;
-
-function checkRateLimit(ip: string): boolean {
-  const now = Date.now();
-  const bucket = replyRateLimitMap.get(ip);
-  if (!bucket || now >= bucket.resetAt) {
-    replyRateLimitMap.set(ip, { count: 1, resetAt: now + WINDOW_MS });
-    return true;
-  }
-  if (bucket.count >= MAX_REPLIES_PER_WINDOW) {
-    return false;
-  }
-  bucket.count++;
-  return true;
-}
+const replyLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  maxRequests: 10,
+});
 
 export async function POST(req: Request) {
-  const origin = req.headers.get("origin") || req.headers.get("referer") || "";
-  const isLocalhost =
-    origin.includes("localhost:3000") || origin.includes("127.0.0.1:3000");
-  const isProductionDomain = origin.includes("topfastfood.lol");
-
-  if (!isLocalhost && !isProductionDomain) {
+  // 1. Origin verification
+  if (!isValidOrigin(req)) {
     return NextResponse.json(
       { error: "Unauthorized request origin." },
       { status: 403 }
     );
   }
 
-  const forwarded = req.headers.get("x-forwarded-for");
-  const ip = forwarded?.split(",")[0]?.trim() || "unknown";
-  if (!checkRateLimit(ip)) {
+  // 2. IP Rate limiting
+  const ip = getClientIp(req);
+  const { isLimited, resetInSec } = replyLimiter.check(ip);
+  if (isLimited) {
     return NextResponse.json(
-      { error: "Too many replies. Please wait a minute before replying again." },
+      { error: `Too many replies. Please wait ${resetInSec} seconds before replying again.` },
       { status: 429 }
     );
   }
 
   try {
-    const body = await req.json();
+    let body: {
+      transactionId?: string;
+      authorHandle?: string;
+      authorAvatar?: string;
+      message?: string;
+    };
+
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+    }
+
     const { transactionId, authorHandle, authorAvatar, message } = body;
 
-    if (!transactionId || typeof transactionId !== "string") {
+    // 3. Authenticate user: Only people logged into X account can reply
+    let verifiedHandle = (authorHandle || "").trim().slice(0, 30);
+    let verifiedAvatar = authorAvatar;
+
+    if (supabase) {
+      const authHeader = req.headers.get("authorization");
+      const token = authHeader?.replace(/^Bearer\s+/i, "");
+
+      if (!token) {
+        return NextResponse.json(
+          { error: "Only users logged in with an X account can reply." },
+          { status: 401 }
+        );
+      }
+
+      const { data: userData, error: authErr } = await supabase.auth.getUser(token);
+      if (authErr || !userData?.user) {
+        return NextResponse.json(
+          { error: "Invalid or expired session. Please log in with X to reply." },
+          { status: 401 }
+        );
+      }
+
+      const xHandle =
+        userData.user.user_metadata?.user_name ||
+        userData.user.user_metadata?.preferred_username;
+
+      if (!xHandle) {
+        return NextResponse.json(
+          { error: "Your account must be connected to X to post replies." },
+          { status: 403 }
+        );
+      }
+
+      verifiedHandle = `@${xHandle}`;
+      verifiedAvatar = userData.user.user_metadata?.avatar_url || authorAvatar;
+    }
+
+    // 4. Strict UUID validation to prevent database injection or syntax crash
+    if (!isValidUUID(transactionId)) {
       return NextResponse.json(
-        { error: "Transaction ID is required." },
+        { error: "Invalid transaction ID format." },
         { status: 400 }
       );
     }
@@ -81,9 +123,14 @@ export async function POST(req: Request) {
       );
     }
 
-    const trimmedAuthor = (authorHandle || "Anonymous Fan").trim().slice(0, 30);
+    if (!verifiedHandle) {
+      return NextResponse.json(
+        { error: "Valid X handle is required to reply." },
+        { status: 400 }
+      );
+    }
 
-    // Run moderation
+    // 5. Content moderation
     const msgCheck = validateContent(trimmedMsg, "message");
     if (!msgCheck.isValid) {
       return NextResponse.json(
@@ -92,13 +139,17 @@ export async function POST(req: Request) {
       );
     }
 
-    const authorCheck = validateContent(trimmedAuthor, "author");
+    const authorCheck = validateContent(verifiedHandle, "author");
     if (!authorCheck.isValid) {
       return NextResponse.json(
         { error: authorCheck.reason || "Invalid username." },
         { status: 400 }
       );
     }
+
+    // 5. Strict Avatar URL validation (protects against SSRF, arbitrary data schemes, and tracking pixels)
+    const sanitizedAvatar =
+      authorAvatar && isValidAvatarUrl(authorAvatar) ? authorAvatar.trim() : null;
 
     if (!supabase) {
       return NextResponse.json(
@@ -111,8 +162,8 @@ export async function POST(req: Request) {
       .from("replies")
       .insert({
         transaction_id: transactionId,
-        author_handle: trimmedAuthor.startsWith("@") ? trimmedAuthor : `@${trimmedAuthor}`,
-        author_avatar: authorAvatar || null,
+        author_handle: verifiedHandle.startsWith("@") ? verifiedHandle : `@${verifiedHandle}`,
+        author_avatar: sanitizedAvatar,
         message: trimmedMsg,
       })
       .select()

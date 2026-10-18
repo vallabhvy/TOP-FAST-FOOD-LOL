@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { validateContent } from "@/lib/moderation";
+import { isValidOrigin, getClientIp, createRateLimiter } from "@/lib/security";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -10,76 +11,30 @@ function getServerSupabase() {
   return createClient(supabaseUrl, supabaseServiceKey);
 }
 
-// ============================================================================
-// Rate Limiter: Maximum 100 requests per minute per IP
-// ============================================================================
-interface RateLimitBucket {
-  count: number;
-  resetAt: number;
-}
+// Rate Limiter: Maximum 5 chain suggestions per 10 minutes per IP
+const addChainLimiter = createRateLimiter({
+  windowMs: 10 * 60 * 1000,
+  maxRequests: 5,
+});
 
-const rateLimitMap = new Map<string, RateLimitBucket>();
-const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
-const MAX_REQUESTS_PER_MINUTE = 100;
-
-function checkRateLimit(ip: string): { isLimited: boolean; remaining: number; resetInSec: number } {
-  const now = Date.now();
-  const bucket = rateLimitMap.get(ip);
-
-  // If no entry or window expired, start a new window
-  if (!bucket || now >= bucket.resetAt) {
-    rateLimitMap.set(ip, {
-      count: 1,
-      resetAt: now + RATE_LIMIT_WINDOW_MS,
-    });
-    return {
-      isLimited: false,
-      remaining: MAX_REQUESTS_PER_MINUTE - 1,
-      resetInSec: Math.ceil(RATE_LIMIT_WINDOW_MS / 1000),
-    };
-  }
-
-  // Inside the 1-minute window
-  bucket.count++;
-  const remaining = Math.max(0, MAX_REQUESTS_PER_MINUTE - bucket.count);
-  const resetInSec = Math.ceil((bucket.resetAt - now) / 1000);
-
-  // Periodic garbage collection for memory hygiene
-  if (rateLimitMap.size > 1000) {
-    for (const [key, val] of rateLimitMap.entries()) {
-      if (now >= val.resetAt) {
-        rateLimitMap.delete(key);
-      }
-    }
-  }
-
-  return {
-    isLimited: bucket.count > MAX_REQUESTS_PER_MINUTE,
-    remaining,
-    resetInSec,
-  };
-}
+const WEB3FORMS_ACCESS_KEY =
+  process.env.WEB3FORMS_ACCESS_KEY || "f139beb4-ae4a-4838-8aba-d50af8577d88";
 
 export async function POST(req: Request) {
-  // CORS / CSRF Protection
-  const origin = req.headers.get("origin") || req.headers.get("referer") || "";
-  const isLocalhost = origin.includes("localhost:3000") || origin.includes("127.0.0.1:3000");
-  const isProductionDomain = origin.includes("topfastfood.lol");
-
-  if (!isLocalhost && !isProductionDomain) {
+  // 1. CORS / CSRF Protection
+  if (!isValidOrigin(req)) {
     return NextResponse.json(
       { error: "Unauthorized request origin." },
       { status: 403 }
     );
   }
 
-  // Rate Limiting: 100 requests per minute per IP
-  const forwarded = req.headers.get("x-forwarded-for");
-  const ip = forwarded?.split(",")[0]?.trim() || "unknown";
-  const { isLimited, remaining, resetInSec } = checkRateLimit(ip);
+  // 2. Rate Limiting: 5 requests per 10 minutes per IP
+  const ip = getClientIp(req);
+  const { isLimited, remaining, resetInSec } = addChainLimiter.check(ip);
 
   const rateLimitHeaders = {
-    "X-RateLimit-Limit": MAX_REQUESTS_PER_MINUTE.toString(),
+    "X-RateLimit-Limit": "5",
     "X-RateLimit-Remaining": remaining.toString(),
     "X-RateLimit-Reset": resetInSec.toString(),
   };
@@ -87,7 +42,7 @@ export async function POST(req: Request) {
   if (isLimited) {
     return NextResponse.json(
       {
-        error: "Rate limit exceeded: Maximum 100 requests per minute allowed.",
+        error: `Rate limit exceeded. Please wait ${resetInSec} seconds before suggesting another chain.`,
       },
       {
         status: 429,
@@ -121,23 +76,19 @@ export async function POST(req: Request) {
   const {
     name,
     category = "Burgers",
-    actionType = "BOOST",
-    amount = 1,
     message = "Waiting for inaugural claim...",
     author = "AnonymousFan",
-    accentColor = "#f59e0b",
   } = body;
 
-  // 1. Validate required fields
-  if (!name || typeof name !== "string") {
+  // 3. Validate required fields & types
+  if (!name || typeof name !== "string" || name.trim().length < 2) {
     return NextResponse.json(
-      { error: "Chain name is required." },
+      { error: "Chain name is required (at least 2 characters)." },
       { status: 400, headers: rateLimitHeaders }
     );
   }
 
   if (
-    typeof actionType !== "string" ||
     typeof message !== "string" ||
     typeof author !== "string" ||
     typeof category !== "string"
@@ -148,8 +99,13 @@ export async function POST(req: Request) {
     );
   }
 
-  // 2. Content moderation
-  const nameCheck = validateContent(name, "brand");
+  const cleanName = name.trim().slice(0, 35);
+  const cleanCategory = category.trim().slice(0, 30);
+  const cleanMessage = message.trim().slice(0, 40);
+  const cleanAuthor = author.trim().slice(0, 30);
+
+  // 4. Content moderation
+  const nameCheck = validateContent(cleanName, "brand");
   if (!nameCheck.isValid) {
     return NextResponse.json(
       { error: nameCheck.reason || "Brand name contains prohibited content." },
@@ -157,7 +113,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const msgCheck = validateContent(message, "message");
+  const msgCheck = validateContent(cleanMessage, "message");
   if (!msgCheck.isValid) {
     return NextResponse.json(
       { error: msgCheck.reason || "Message contains prohibited content." },
@@ -165,18 +121,13 @@ export async function POST(req: Request) {
     );
   }
 
-  const authorCheck = validateContent(author, "author");
+  const authorCheck = validateContent(cleanAuthor, "author");
   if (!authorCheck.isValid) {
     return NextResponse.json(
       { error: authorCheck.reason || "Author identity is invalid." },
       { status: 422, headers: rateLimitHeaders }
     );
   }
-
-  const baseId = name.toLowerCase().replace(/[^a-z0-9]/g, "-");
-  const id = `${baseId}-${crypto.randomUUID().slice(0, 6)}`;
-  const initialScore = actionType === "BOOST" ? amount : -amount;
-  const receiptNumber = `REQ-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
 
   const supabase = getServerSupabase();
 
@@ -185,7 +136,7 @@ export async function POST(req: Request) {
     const { data: existing } = await supabase
       .from("brands")
       .select("name")
-      .ilike("name", name.trim())
+      .ilike("name", cleanName)
       .limit(1);
 
     if (existing && existing.length > 0) {
@@ -207,13 +158,13 @@ export async function POST(req: Request) {
         Accept: "application/json",
       },
       body: JSON.stringify({
-        access_key: "f139beb4-ae4a-4838-8aba-d50af8577d88",
-        subject: `[TOPFASTFOOD Chain Suggestion] ${name.trim()}`,
+        access_key: WEB3FORMS_ACCESS_KEY,
+        subject: `[TOPFASTFOOD Chain Suggestion] ${cleanName}`,
         from_name: "topfastfood.lol Suggestion Bot",
-        chain_name: name.trim(),
-        category: category.trim(),
-        message: message.trim(),
-        suggested_by: author.trim(),
+        chain_name: cleanName,
+        category: cleanCategory,
+        message: cleanMessage,
+        suggested_by: cleanAuthor,
         submitted_at: new Date().toISOString(),
       }),
     });
