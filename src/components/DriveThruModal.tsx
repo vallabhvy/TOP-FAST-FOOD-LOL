@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, AlertTriangle } from "lucide-react";
+import { X, AlertTriangle, Crown, Flame, User, Sparkles } from "lucide-react";
 import { FastFoodBrand, ActionType } from "@/types";
 import { sound } from "@/lib/sound";
 import { validateContent } from "@/lib/moderation";
@@ -237,51 +237,114 @@ export const DriveThruModal: React.FC<DriveThruModalProps> = ({
             </div>
           </div>
 
-          {/* Message field */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                Add a message (optional)
-              </label>
-              <span className="text-[11px] font-mono text-slate-400">
-                {message.length}/80
-              </span>
+          {/* Highlighted Comment Section (Slogan when Boosting, Roast when Sabotaging) */}
+          {isBoost ? (
+            <div className="p-3.5 rounded-2xl border-2 border-emerald-500/50 bg-gradient-to-b from-emerald-950/40 to-slate-900/60 shadow-[0_0_25px_rgba(16,185,129,0.2)] space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-black uppercase tracking-wider text-emerald-300 flex items-center gap-1.5">
+                  <Crown className="w-4 h-4 text-emerald-400 fill-emerald-400/30" />
+                  <span>Your Slogan / Endorsement</span>
+                  <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                    TOP BACKER
+                  </span>
+                </label>
+                <span className="text-[11px] font-mono text-emerald-400/80">
+                  {message.length}/80
+                </span>
+              </div>
+              <p className="text-[11px] text-emerald-200/90 leading-snug">
+                👑 <strong>Claim the spotlight:</strong> Your slogan is pinned directly under {brand.name} on the homepage as its official Top Backer motto!
+              </p>
+              <input
+                type="text"
+                maxLength={80}
+                placeholder="e.g. Best curly fries on earth, undisputed king"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                className="w-full bg-slate-950/80 border border-emerald-500/40 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-400 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 shadow-inner"
+              />
+              <p className="text-[10px] text-slate-400">
+                Rule: one line, no hate speech, threats, or private info.
+              </p>
             </div>
-            <input
-              type="text"
-              maxLength={80}
-              placeholder={
-                isBoost
-                  ? "e.g. Best fries on earth, fight me"
-                  : "e.g. Overrated grease puddle"
-              }
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              className="w-full bg-slate-950/60 border border-white/15 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400"
-            />
-            <p className="text-[11px] text-slate-400 mt-1">
-              One line rule: no slurs, threats or personal info.
-            </p>
-          </div>
+          ) : (
+            <div className="p-3.5 rounded-2xl border-2 border-rose-500/50 bg-gradient-to-b from-rose-950/40 to-slate-900/60 shadow-[0_0_25px_rgba(244,63,94,0.2)] space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-black uppercase tracking-wider text-rose-300 flex items-center gap-1.5">
+                  <Flame className="w-4 h-4 text-rose-400 fill-rose-400/30" />
+                  <span>Public Roast</span>
+                  <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                    ROAST FEED
+                  </span>
+                </label>
+                <span className="text-[11px] font-mono text-rose-400/80">
+                  {message.length}/80
+                </span>
+              </div>
+              <p className="text-[11px] text-rose-200/90 leading-snug">
+                🔥 <strong>Leave a burn:</strong> Your roast gets permanently logged on {brand.name}&apos;s live activity feed and printed receipts!
+              </p>
+              <input
+                type="text"
+                maxLength={80}
+                placeholder="e.g. Overrated grease puddle with broken machines"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                className="w-full bg-slate-950/80 border border-rose-500/40 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-400 focus:outline-none focus:border-rose-400 focus:ring-1 focus:ring-rose-400 shadow-inner"
+              />
+              <p className="text-[10px] text-slate-400">
+                Rule: one line, no hate speech, threats, or private info.
+              </p>
+            </div>
+          )}
 
-          {/* Name / Display Name */}
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">
-              Your name
-            </label>
+          {/* Identity: Anonymous or Logged in */}
+          <div className="p-3.5 rounded-2xl bg-white/[0.04] border border-white/10 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Author Display Name</span>
+              </label>
+              {user ? (
+                <span className="text-[11px] font-mono text-emerald-400 font-semibold flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Logged in as @{user.user_metadata?.user_name || "user"}
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    sound.playClick();
+                    supabase?.auth.signInWithOAuth({
+                      provider: "twitter",
+                      options: {
+                        redirectTo: typeof window !== "undefined" ? window.location.href : undefined,
+                      },
+                    });
+                  }}
+                  className="text-[11px] text-cyan-400 hover:text-cyan-300 hover:underline flex items-center gap-1.5 font-semibold cursor-pointer"
+                >
+                  <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24">
+                    <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z" />
+                  </svg>
+                  <span>Sign in with X (optional)</span>
+                </button>
+              )}
+            </div>
+
             <input
               type="text"
               maxLength={30}
-              placeholder={user ? "e.g. @yourhandle" : "e.g. BurgerFan or leave for Anonymous"}
+              placeholder={user ? "e.g. @yourhandle" : "Enter display nickname, or leave empty for 'Anonymous'"}
               value={authorName}
               onChange={(e) => setAuthorName(e.target.value)}
-              className="w-full bg-slate-950/60 border border-white/15 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400"
+              className="w-full bg-slate-950/70 border border-white/15 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400"
             />
-            <p className="text-[11px] text-slate-400 mt-1">
-              {user
-                ? `Logged in via X`
-                : "No account required. Display name or 'Anonymous'."}
-            </p>
+
+            <div className="flex items-start gap-1.5 text-[11px] text-slate-400 bg-white/[0.03] p-2 rounded-lg border border-white/[0.06]">
+              <span className="font-bold text-cyan-300 flex-shrink-0">✓ Anonymous or Logged in:</span>
+              <span>No account needed! Vote 100% anonymously with any nickname, or sign in with X to show your verified @handle.</span>
+            </div>
           </div>
 
           {/* Submit Button & Subtext */}
