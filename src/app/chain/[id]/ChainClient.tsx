@@ -258,16 +258,6 @@ export default function ChainClient({ id }: { id: string }) {
   const visual = getBrandVisual(brand.id, brand.category);
   const currentIndex = allBrands.findIndex((b) => b.id === brand.id);
   const currentRank = currentIndex >= 0 ? currentIndex + 1 : 1;
-  const brandAhead = currentIndex > 0 ? allBrands[currentIndex - 1] : null;
-  const brandBehind = currentIndex >= 0 && currentIndex < allBrands.length - 1 ? allBrands[currentIndex + 1] : null;
-
-  // Motivating line per Section 5.6
-  const gapBehindStr = brandAhead
-    ? `${brandAhead.totalScore - brand.totalScore + 1} points behind ${brandAhead.name} (#${currentIndex})`
-    : null;
-  const gapAheadStr = brandBehind
-    ? `${brand.totalScore - brandBehind.totalScore} points ahead of ${brandBehind.name} (#${currentIndex + 2})`
-    : null;
 
   const handleOpenOrder = (action: ActionType) => {
     sound.playClick();
@@ -401,38 +391,10 @@ export default function ChainClient({ id }: { id: string }) {
               </div>
             </div>
           </div>
-
-          {/* Gap to Neighbours (Section 5.6: The single most motivating line on the page) */}
-          {(gapBehindStr || gapAheadStr) && (
-            <div className="mt-5 pt-3.5 border-t border-white/[0.08] text-xs font-semibold text-cyan-300/90 flex flex-wrap gap-2">
-              {gapBehindStr && <span>{gapBehindStr}.</span>}
-              {gapAheadStr && <span>{gapAheadStr}.</span>}
-            </div>
-          )}
         </div>
 
-        {/* Top Backer & Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="glass-card p-4 rounded-xl border border-white/[0.08] sm:col-span-1 space-y-1">
-            <div className="text-[10px] text-cyan-400 uppercase tracking-widest font-bold">
-              Top backer
-            </div>
-            {brand.sloganAuthor && brand.sloganAuthor !== "Unclaimed" ? (
-              <div>
-                <div className="font-bold text-sm text-white">
-                  {brand.sloganAuthor}
-                </div>
-                <div className="text-xs text-slate-300 italic mt-0.5 truncate">
-                  &quot;{brand.currentSlogan}&quot;
-                </div>
-              </div>
-            ) : (
-              <div className="text-xs text-slate-400 italic">
-                No top backer yet. Boost to claim this slot.
-              </div>
-            )}
-          </div>
-
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 gap-3">
           <div className="glass-card p-4 rounded-xl border border-white/[0.08] space-y-1">
             <div className="text-[10px] text-emerald-400 uppercase tracking-widest font-bold">
               Boosts
