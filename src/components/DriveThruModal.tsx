@@ -76,8 +76,12 @@ export const DriveThruModal: React.FC<DriveThruModalProps> = ({
   if (!isOpen || !brand) return null;
 
   const isBoost = actionType === "BOOST";
-  const headerBg = isBoost ? "bg-[#3B7A1F]" : "bg-[#B82E22]";
-  const buttonBg = isBoost ? "bg-[#3B7A1F] hover:bg-[#2F6318]" : "bg-[#B82E22] hover:bg-[#99251B]";
+  const headerBg = isBoost
+    ? "bg-gradient-to-r from-emerald-600 to-teal-600"
+    : "bg-gradient-to-r from-rose-600 to-red-600";
+  const buttonBg = isBoost
+    ? "bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black shadow-[0_0_25px_rgba(16,185,129,0.45)]"
+    : "bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-400 hover:to-red-500 text-white font-black shadow-[0_0_25px_rgba(244,63,94,0.45)]";
 
   const newProjectedScore = isBoost ? brand.totalScore + amount : brand.totalScore - amount;
 
@@ -145,19 +149,19 @@ export const DriveThruModal: React.FC<DriveThruModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="relative w-full max-w-md bg-[#FFFFFF] border border-[#E2E4DC] rounded-xl shadow-xl overflow-hidden text-[#1E2A3A]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-150">
+      <div className="relative w-full max-w-md bg-slate-900/90 backdrop-blur-2xl border border-white/15 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.2)] overflow-hidden text-slate-100">
         {/* Header Bar */}
-        <div className={`${headerBg} text-white px-4 py-3 flex items-center justify-between`}>
+        <div className={`${headerBg} text-white px-5 py-3.5 flex items-center justify-between shadow-md`}>
           <div className="flex items-center gap-2">
-            <span className="text-base font-bold">
-              {isBoost ? "▲ Boost" : "▼ Sabotage"} {brand.name}
+            <span className="text-base font-black tracking-wide">
+              {isBoost ? "▲ BOOST" : "▼ SABOTAGE"} {brand.name.toUpperCase()}
             </span>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-white/80 hover:text-white p-1 rounded transition-colors cursor-pointer"
+            className="text-white/80 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
             title="Close"
           >
             <X className="w-5 h-5" />
@@ -165,14 +169,14 @@ export const DriveThruModal: React.FC<DriveThruModalProps> = ({
         </div>
 
         {/* Action Toggle Switch */}
-        <div className="grid grid-cols-2 p-3 pb-0 gap-2">
+        <div className="grid grid-cols-2 p-3.5 pb-0 gap-2">
           <button
             type="button"
             onClick={() => setActionType("BOOST")}
-            className={`py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            className={`py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               isBoost
-                ? "bg-[#3B7A1F] text-white shadow-xs"
-                : "bg-[#EEF0EA] text-[#5A6878] hover:bg-[#E2E4DC]"
+                ? "bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 font-black shadow-[0_0_15px_rgba(16,185,129,0.35)]"
+                : "bg-white/[0.05] text-slate-400 hover:bg-white/10 hover:text-white"
             }`}
           >
             <span>▲</span>
@@ -181,10 +185,10 @@ export const DriveThruModal: React.FC<DriveThruModalProps> = ({
           <button
             type="button"
             onClick={() => setActionType("SABOTAGE")}
-            className={`py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            className={`py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               !isBoost
-                ? "bg-[#B82E22] text-white shadow-xs"
-                : "bg-[#EEF0EA] text-[#5A6878] hover:bg-[#E2E4DC]"
+                ? "bg-gradient-to-r from-rose-500 to-red-600 text-white font-black shadow-[0_0_15px_rgba(244,63,94,0.35)]"
+                : "bg-white/[0.05] text-slate-400 hover:bg-white/10 hover:text-white"
             }`}
           >
             <span>▼</span>
@@ -195,7 +199,7 @@ export const DriveThruModal: React.FC<DriveThruModalProps> = ({
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
           {moderationError && (
-            <div className="p-2.5 rounded-lg bg-[#B82E22]/10 border border-[#B82E22]/30 flex items-start gap-2 text-xs text-[#B82E22]">
+            <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-start gap-2 text-xs text-rose-300">
               <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
               <span>{moderationError}</span>
             </div>
@@ -203,7 +207,7 @@ export const DriveThruModal: React.FC<DriveThruModalProps> = ({
 
           {/* Amount Selection Chips */}
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-[#5A6878] mb-1.5">
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
               Choose amount
             </label>
             <div className="grid grid-cols-4 gap-2">
@@ -215,10 +219,10 @@ export const DriveThruModal: React.FC<DriveThruModalProps> = ({
                     setAmount(val);
                     sound.playClick();
                   }}
-                  className={`py-2 rounded-lg text-sm font-bold border transition-all cursor-pointer ${
+                  className={`py-2 rounded-xl text-sm font-bold border transition-all cursor-pointer ${
                     amount === val
-                      ? "border-[#167A75] bg-[#167A75] text-white shadow-xs"
-                      : "border-[#E2E4DC] bg-[#FFFFFF] hover:bg-[#EEF0EA] text-[#1E2A3A]"
+                      ? "border-cyan-400 bg-gradient-to-r from-cyan-500 to-teal-400 text-slate-950 font-black shadow-[0_0_15px_rgba(6,182,212,0.4)]"
+                      : "border-white/10 bg-white/[0.05] hover:bg-white/10 text-slate-200"
                   }`}
                 >
                   ${val}
@@ -226,20 +230,20 @@ export const DriveThruModal: React.FC<DriveThruModalProps> = ({
               ))}
             </div>
 
-            {/* Live Rank Preview per Section 5.4 */}
-            <div className="mt-2 text-xs text-[#5A6878] font-medium bg-[#EEF0EA] p-2 rounded-md">
+            {/* Live Rank Preview */}
+            <div className="mt-2.5 text-xs text-slate-300 font-medium bg-white/[0.04] border border-white/10 p-2.5 rounded-xl">
               {isBoost ? `+${amount}` : `-${amount}`} points. {brand.name} will have{" "}
-              <span className="font-bold text-[#1E2A3A]">{newProjectedScore} points</span>.
+              <span className="font-bold text-cyan-300">{newProjectedScore} points</span>.
             </div>
           </div>
 
-          {/* Message field (optional, 80 characters limit) */}
+          {/* Message field */}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-bold uppercase tracking-wider text-[#5A6878]">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-400">
                 Add a message (optional)
               </label>
-              <span className="text-[11px] font-mono text-[#7A8898]">
+              <span className="text-[11px] font-mono text-slate-400">
                 {message.length}/80
               </span>
             </div>
@@ -253,16 +257,16 @@ export const DriveThruModal: React.FC<DriveThruModalProps> = ({
               }
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              className="w-full bg-[#FFFFFF] border border-[#CBD2C4] rounded-lg px-3 py-2 text-sm text-[#1E2A3A] placeholder-[#9AA5B1] focus:outline-none focus:border-[#167A75] focus:ring-1 focus:ring-[#167A75]"
+              className="w-full bg-slate-950/60 border border-white/15 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400"
             />
-            <p className="text-[11px] text-[#7A8898] mt-1">
+            <p className="text-[11px] text-slate-400 mt-1">
               One line rule: no slurs, threats or personal info.
             </p>
           </div>
 
           {/* Name / Display Name */}
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-[#5A6878] mb-1">
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">
               Your name
             </label>
             <input
@@ -271,9 +275,9 @@ export const DriveThruModal: React.FC<DriveThruModalProps> = ({
               placeholder={user ? "e.g. @yourhandle" : "e.g. BurgerFan or leave for Anonymous"}
               value={authorName}
               onChange={(e) => setAuthorName(e.target.value)}
-              className="w-full bg-[#FFFFFF] border border-[#CBD2C4] rounded-lg px-3 py-2 text-sm text-[#1E2A3A] placeholder-[#9AA5B1] focus:outline-none focus:border-[#167A75] focus:ring-1 focus:ring-[#167A75]"
+              className="w-full bg-slate-950/60 border border-white/15 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400"
             />
-            <p className="text-[11px] text-[#7A8898] mt-1">
+            <p className="text-[11px] text-slate-400 mt-1">
               {user
                 ? `Logged in via X`
                 : "No account required. Display name or 'Anonymous'."}
@@ -285,7 +289,7 @@ export const DriveThruModal: React.FC<DriveThruModalProps> = ({
             <button
               type="submit"
               disabled={isSubmitting}
-              className={`w-full py-2.5 px-4 rounded-lg ${buttonBg} text-white font-bold text-sm shadow-sm transition-all active:scale-98 cursor-pointer disabled:opacity-50`}
+              className={`w-full py-3 px-4 rounded-xl ${buttonBg} text-sm transition-all active:scale-98 cursor-pointer disabled:opacity-50`}
             >
               {isSubmitting
                 ? "Connecting..."
@@ -293,7 +297,7 @@ export const DriveThruModal: React.FC<DriveThruModalProps> = ({
                   ? `Pay $${amount} and boost`
                   : `Pay $${amount} and sabotage`}
             </button>
-            <p className="text-center text-[11px] text-[#7A8898] mt-2">
+            <p className="text-center text-[11px] text-slate-400 mt-2">
               Your ${amount} goes to the site&apos;s creator, not the restaurant.
             </p>
           </div>

@@ -12,6 +12,7 @@ import { sound } from "@/lib/sound";
 import { AddChainModal } from "@/components/AddChainModal";
 import { FeedbackModal } from "@/components/FeedbackModal";
 import { DriveThruFooter } from "@/components/DriveThruFooter";
+import { Logo } from "@/components/Logo";
 
 export default function AboutClient() {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
@@ -85,29 +86,28 @@ export default function AboutClient() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#F6F7F3] text-[#1E2A3A] flex flex-col font-sans selection:bg-[#167A75] selection:text-white">
+    <div className="min-h-screen text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-slate-950">
       {/* Header */}
-      <header className="border-b border-[#E2E4DC] bg-[#FFFFFF] sticky top-0 z-30">
+      <header className="border-b border-white/[0.08] bg-[#0A0E1A]/75 backdrop-blur-xl sticky top-0 z-30">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
           <Link
             href="/"
-            className="flex items-center gap-2 group cursor-pointer"
+            className="flex items-center gap-2.5 group cursor-pointer"
           >
-            <img
-              src="/logo.jpg"
-              alt="topfastfood.lol logo"
-              className="w-7 h-7 sm:w-8 sm:h-8 object-cover rounded-md border border-[#E2E4DC]"
-            />
-            <span className="text-lg sm:text-xl font-bold tracking-tight text-[#1E2A3A] group-hover:text-[#167A75] transition-colors">
-              topfastfood<span className="text-[#167A75]">.lol</span>
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-tr from-cyan-500 to-amber-400 rounded-xl blur-md opacity-30 group-hover:opacity-70 transition-opacity" />
+              <Logo className="w-8 h-8 relative" size={32} />
+            </div>
+            <span className="text-lg sm:text-xl font-black tracking-tight text-white group-hover:text-cyan-300 transition-colors">
+              topfastfood<span className="text-cyan-400">.lol</span>
             </span>
           </Link>
 
           <Link
             href="/"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#CBD2C4] hover:bg-[#EEF0EA] text-xs sm:text-sm font-medium text-[#1E2A3A] transition-colors"
+            className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl glass-pill text-xs sm:text-sm font-semibold text-slate-200 hover:text-white transition-all cursor-pointer"
           >
-            <ArrowLeft className="w-3.5 h-3.5" />
+            <ArrowLeft className="w-3.5 h-3.5 text-cyan-400" />
             <span>Back to ranking</span>
           </Link>
         </div>
@@ -117,47 +117,50 @@ export default function AboutClient() {
       <main className="max-w-3xl mx-auto px-4 py-8 sm:py-12 flex-1 w-full space-y-10">
         {/* Intro */}
         <section className="space-y-3">
-          <h1 className="text-2xl sm:text-4xl font-extrabold text-[#1E2A3A] tracking-tight">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-xs font-bold tracking-wide">
+            <span>⚡ THE LIVE INTERNET DRIVE-THRU</span>
+          </div>
+          <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
             How it works
           </h1>
-          <p className="text-base text-[#5A6878] leading-relaxed">
+          <p className="text-base sm:text-lg text-slate-300 leading-relaxed">
             The internet&apos;s fast food ranking, settled in dollars. No critics, no sponsored reviews, no corporate PR. Fans vote with $1 micro-tips to crown their favourite drive-thru or roast their rivals.
           </p>
         </section>
 
         {/* The Core Mechanics in 3 Steps */}
         <section className="space-y-4">
-          <h2 className="text-lg font-bold text-[#1E2A3A]">
+          <h2 className="text-lg font-extrabold text-white tracking-tight">
             Three simple rules
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-[#FFFFFF] border border-[#E2E4DC] p-4 rounded-xl space-y-2 shadow-2xs">
-              <div className="w-7 h-7 rounded-md bg-[#3B7A1F]/10 text-[#3B7A1F] font-bold text-xs flex items-center justify-center">
+            <div className="glass-card p-5 rounded-2xl space-y-3 border border-white/[0.08] shadow-[0_4px_20px_rgba(0,0,0,0.25)]">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 font-black text-xs flex items-center justify-center">
                 ▲
               </div>
-              <h3 className="font-bold text-sm text-[#1E2A3A]">1. Boost $1</h3>
-              <p className="text-xs text-[#5A6878] leading-relaxed">
+              <h3 className="font-extrabold text-sm text-white">1. Boost $1</h3>
+              <p className="text-xs text-slate-300 leading-relaxed">
                 Adds 1 point to your chain and moves it up the board. Attach a message to claim the top-backer slot.
               </p>
             </div>
 
-            <div className="bg-[#FFFFFF] border border-[#E2E4DC] p-4 rounded-xl space-y-2 shadow-2xs">
-              <div className="w-7 h-7 rounded-md bg-[#B82E22]/10 text-[#B82E22] font-bold text-xs flex items-center justify-center">
+            <div className="glass-card p-5 rounded-2xl space-y-3 border border-white/[0.08] shadow-[0_4px_20px_rgba(0,0,0,0.25)]">
+              <div className="w-8 h-8 rounded-lg bg-rose-500/20 border border-rose-500/30 text-rose-300 font-black text-xs flex items-center justify-center">
                 ▼
               </div>
-              <h3 className="font-bold text-sm text-[#1E2A3A]">2. Sabotage $1</h3>
-              <p className="text-xs text-[#5A6878] leading-relaxed">
+              <h3 className="font-extrabold text-sm text-white">2. Sabotage $1</h3>
+              <p className="text-xs text-slate-300 leading-relaxed">
                 Removes 1 point from a rival chain to drag them down. Attach your roast to their activity log.
               </p>
             </div>
 
-            <div className="bg-[#FFFFFF] border border-[#E2E4DC] p-4 rounded-xl space-y-2 shadow-2xs">
-              <div className="w-7 h-7 rounded-md bg-[#167A75]/10 text-[#167A75] font-bold text-xs flex items-center justify-center">
+            <div className="glass-card p-5 rounded-2xl space-y-3 border border-white/[0.08] shadow-[0_4px_20px_rgba(0,0,0,0.25)]">
+              <div className="w-8 h-8 rounded-lg bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 font-black text-xs flex items-center justify-center">
                 🧾
               </div>
-              <h3 className="font-bold text-sm text-[#1E2A3A]">3. Share the receipt</h3>
-              <p className="text-xs text-[#5A6878] leading-relaxed">
+              <h3 className="font-extrabold text-sm text-white">3. Share the receipt</h3>
+              <p className="text-xs text-slate-300 leading-relaxed">
                 Get a thermal drive-thru receipt for every order. Share the link on X so your friends or rivals can respond.
               </p>
             </div>
@@ -165,19 +168,19 @@ export default function AboutClient() {
         </section>
 
         {/* Interactive Simulator (Section F8: Fixed to $1 matching live site) */}
-        <section className="bg-[#FFFFFF] border border-[#E2E4DC] rounded-xl p-5 sm:p-6 space-y-4 shadow-2xs">
+        <section className="glass-panel rounded-2xl p-5 sm:p-7 space-y-4 border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)] relative overflow-hidden">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-base font-bold text-[#1E2A3A]">
+              <h2 className="text-base sm:text-lg font-extrabold text-white tracking-tight">
                 Try the controls
               </h2>
-              <p className="text-xs text-[#5A6878]">
+              <p className="text-xs text-slate-300">
                 Interactive demo — tests the ranking mechanics with zero real charges.
               </p>
             </div>
             <button
               onClick={resetSim}
-              className="text-xs text-[#5A6878] hover:text-[#1E2A3A] flex items-center gap-1 cursor-pointer"
+              className="text-xs text-slate-400 hover:text-cyan-300 flex items-center gap-1.5 cursor-pointer glass-pill px-2.5 py-1 transition-colors"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>Reset</span>
@@ -185,39 +188,39 @@ export default function AboutClient() {
           </div>
 
           {/* Simulator Display Card */}
-          <div className="bg-[#F6F7F3] border border-[#E2E4DC] rounded-lg p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-md bg-[#FFFFFF] border border-[#CBD2C4] flex items-center justify-center text-lg">
+          <div className="bg-slate-950/70 border border-white/10 rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-white/[0.06] border border-white/10 flex items-center justify-center text-xl shadow-inner">
                 🍔
               </div>
               <div>
-                <div className="font-bold text-sm text-[#1E2A3A]">
+                <div className="font-black text-sm text-white">
                   Pixel Burger Joint
                 </div>
-                <div className="text-xs text-[#5A6878]">
+                <div className="text-xs text-amber-300 font-semibold">
                   Current standing: Rank #{simRank}
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-3 justify-between sm:justify-end">
+            <div className="flex items-center gap-3.5 justify-between sm:justify-end">
               <div className="text-right">
-                <div className="font-receipt text-lg font-bold text-[#1E2A3A]">
-                  {simScore} points
+                <div className="font-receipt text-xl font-black text-white">
+                  {simScore} <span className="text-xs font-medium text-slate-400 uppercase">points</span>
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleSimBoost}
-                  className="px-3 py-1.5 rounded-md bg-[#3B7A1F] hover:bg-[#2F6318] text-white text-xs font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1"
+                  className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 text-xs font-black transition-all active:scale-95 cursor-pointer flex items-center gap-1.5 shadow-[0_0_12px_rgba(16,185,129,0.35)]"
                 >
                   <span>▲</span>
                   <span>Boost $1</span>
                 </button>
                 <button
                   onClick={handleSimSabotage}
-                  className="px-3 py-1.5 rounded-md bg-[#B82E22] hover:bg-[#99251B] text-white text-xs font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1"
+                  className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-400 hover:to-red-500 text-white text-xs font-black transition-all active:scale-95 cursor-pointer flex items-center gap-1.5 shadow-[0_0_12px_rgba(244,63,94,0.35)]"
                 >
                   <span>▼</span>
                   <span>Sabotage $1</span>
@@ -226,44 +229,44 @@ export default function AboutClient() {
             </div>
           </div>
 
-          <div className="text-xs font-receipt text-[#5A6878] bg-[#EEF0EA] p-2.5 rounded-md">
+          <div className="text-xs font-mono text-cyan-300 bg-slate-950/80 border border-white/10 p-3 rounded-xl">
             {simLog}
           </div>
         </section>
 
         {/* Questions FAQ (Section F12: titled 'Questions') */}
         <section className="space-y-4">
-          <h2 className="text-lg font-bold text-[#1E2A3A]">
+          <h2 className="text-lg font-extrabold text-white tracking-tight">
             Questions
           </h2>
 
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             {faqs.map((faq, idx) => {
               const isOpen = openFaq === idx;
               return (
                 <div
                   key={idx}
-                  className="bg-[#FFFFFF] border border-[#E2E4DC] rounded-lg overflow-hidden transition-colors"
+                  className="glass-card border border-white/[0.08] rounded-xl overflow-hidden transition-all shadow-[0_4px_20px_rgba(0,0,0,0.2)]"
                 >
                   <button
                     onClick={() => setOpenFaq(isOpen ? null : idx)}
-                    className="w-full text-left p-4 flex items-center justify-between gap-4 font-bold text-sm text-[#1E2A3A] hover:bg-[#FAFBF9] cursor-pointer"
+                    className="w-full text-left p-4.5 flex items-center justify-between gap-4 font-bold text-sm text-white hover:bg-white/[0.03] cursor-pointer transition-colors"
                   >
                     <span>{faq.q}</span>
                     {isOpen ? (
-                      <ChevronUp className="w-4 h-4 text-[#7A8898] flex-shrink-0" />
+                      <ChevronUp className="w-4 h-4 text-cyan-400 flex-shrink-0" />
                     ) : (
-                      <ChevronDown className="w-4 h-4 text-[#7A8898] flex-shrink-0" />
+                      <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0" />
                     )}
                   </button>
 
                   {isOpen && (
-                    <div className="px-4 pb-4 pt-1 text-xs sm:text-sm text-[#5A6878] leading-relaxed border-t border-[#F0F2EB]">
+                    <div className="px-4.5 pb-4.5 pt-1 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/[0.08]">
                       <p>{faq.a}</p>
                       {faq.hasAddButton && (
                         <button
                           onClick={() => setIsAddChainOpen(true)}
-                          className="mt-3 px-3 py-1.5 rounded-md bg-[#167A75] text-white text-xs font-bold hover:bg-[#12625E] transition-colors cursor-pointer"
+                          className="mt-3 px-3.5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-bold transition-all shadow-[0_0_12px_rgba(6,182,212,0.35)] cursor-pointer"
                         >
                           Suggest a chain
                         </button>
@@ -277,9 +280,9 @@ export default function AboutClient() {
         </section>
 
         {/* Credits */}
-        <section className="pt-4 border-t border-[#E2E4DC] text-xs text-[#5A6878] space-y-1">
+        <section className="pt-4 border-t border-white/[0.08] text-xs text-slate-400 space-y-1.5">
           <p>
-            Concept inspired by <a href="https://outbid.lol" target="_blank" rel="noopener noreferrer" className="text-[#167A75] font-bold hover:underline">Outbid.lol</a>. Built by <a href="https://x.com/vallabh_vy" target="_blank" rel="noopener noreferrer" className="text-[#167A75] font-bold hover:underline">@vallabh_vy</a>.
+            Concept inspired by <a href="https://outbid.lol" target="_blank" rel="noopener noreferrer" className="text-cyan-400 font-semibold hover:underline">Outbid.lol</a>. Built by <a href="https://x.com/vallabh_vy" target="_blank" rel="noopener noreferrer" className="text-cyan-400 font-semibold hover:underline">@vallabh_vy</a>.
           </p>
           <p>
             Parody fan ranking under nominative fair use. Not affiliated with any restaurant corporation.

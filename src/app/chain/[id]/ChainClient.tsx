@@ -227,22 +227,30 @@ export default function ChainClient({ id }: { id: string }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F6F7F3] flex items-center justify-center text-[#1E2A3A] font-sans text-sm">
-        Loading...
+      <div className="min-h-screen flex items-center justify-center text-slate-300 font-sans text-sm">
+        <div className="flex items-center gap-3 glass-card px-5 py-3 rounded-xl border border-white/10">
+          <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping" />
+          <span>Loading chain data...</span>
+        </div>
       </div>
     );
   }
 
   if (!brand) {
     return (
-      <div className="min-h-screen bg-[#F6F7F3] flex flex-col items-center justify-center text-[#1E2A3A] p-4 font-sans space-y-3">
-        <div className="text-lg font-bold">Restaurant chain not found.</div>
-        <Link
-          href="/"
-          className="text-xs font-bold text-[#167A75] hover:underline"
-        >
-          Return to leaderboard
-        </Link>
+      <div className="min-h-screen flex flex-col items-center justify-center text-white p-4 font-sans space-y-4">
+        <div className="glass-panel p-6 rounded-2xl border border-white/10 text-center space-y-3 max-w-sm">
+          <div className="text-4xl mb-2">🍟</div>
+          <div className="text-lg font-bold text-white">Restaurant chain not found.</div>
+          <p className="text-xs text-slate-400">The chain you are looking for might not be added yet.</p>
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-cyan-300 hover:text-cyan-200 transition-colors pt-1"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Return to leaderboard</span>
+          </Link>
+        </div>
       </div>
     );
   }
@@ -316,55 +324,59 @@ export default function ChainClient({ id }: { id: string }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#F6F7F3] text-[#1E2A3A] flex flex-col font-sans selection:bg-[#167A75] selection:text-white">
+    <div className="min-h-screen text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-slate-950">
       {/* Header */}
-      <header className="border-b border-[#E2E4DC] bg-[#FFFFFF] sticky top-0 z-30">
+      <header className="border-b border-white/[0.08] bg-[#0A0E1A]/75 backdrop-blur-xl sticky top-0 z-30">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
           <Link
             href="/"
-            className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-[#5A6878] hover:text-[#1E2A3A] transition-colors"
+            className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-slate-300 hover:text-white transition-colors glass-pill px-3 py-1.5"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="w-4 h-4 text-cyan-400" />
             <span>Leaderboard</span>
           </Link>
 
-          <Link href="/" className="font-bold text-sm sm:text-base text-[#1E2A3A]">
-            topfastfood<span className="text-[#167A75]">.lol</span>
+          <Link href="/" className="flex items-center gap-2 group">
+            <span className="font-extrabold text-sm sm:text-base tracking-tight text-white group-hover:text-cyan-300 transition-colors">
+              topfastfood<span className="text-cyan-400">.lol</span>
+            </span>
           </Link>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-3xl mx-auto px-4 py-6 sm:py-10 flex-1 w-full space-y-8">
+      <main className="max-w-3xl mx-auto px-4 py-6 sm:py-10 flex-1 w-full space-y-6">
         {/* Chain Header Card */}
-        <div className="bg-[#FFFFFF] border border-[#E2E4DC] rounded-xl p-5 sm:p-6 shadow-2xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-start sm:items-center gap-3.5">
-              <div className="w-12 h-12 rounded-xl bg-[#F6F7F3] border border-[#E2E4DC] flex items-center justify-center text-2xl flex-shrink-0">
+        <div className="glass-panel rounded-2xl p-5 sm:p-7 shadow-[0_8px_32px_rgba(0,0,0,0.4)] relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+            <div className="flex items-start sm:items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-white/[0.06] border border-white/10 flex items-center justify-center text-3xl flex-shrink-0 shadow-inner">
                 {visual.emoji}
               </div>
               <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-2xl sm:text-3xl font-extrabold text-[#1E2A3A]">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
                     {brand.name}
                   </h1>
-                  <span className="text-xs font-bold text-[#5A6878] bg-[#EEF0EA] px-2 py-0.5 rounded">
+                  <span className="text-xs font-black text-amber-300 bg-amber-400/15 border border-amber-400/30 px-2.5 py-0.5 rounded-full">
                     #{currentRank}
                   </span>
                 </div>
-                <div className="text-xs text-[#5A6878] mt-0.5 uppercase tracking-wider font-medium">
+                <div className="text-xs text-cyan-300 mt-1 uppercase tracking-wider font-bold">
                   {brand.category}
                 </div>
               </div>
             </div>
 
             {/* Score & Action Buttons */}
-            <div className="flex items-center justify-between sm:justify-end gap-3 pt-3 sm:pt-0 border-t sm:border-t-0 border-[#F0F2EB]">
+            <div className="flex items-center justify-between sm:justify-end gap-4 pt-3 sm:pt-0 border-t sm:border-t-0 border-white/[0.08]">
               <div className="text-left sm:text-right">
-                <div className="font-receipt text-2xl font-bold text-[#1E2A3A]">
+                <div className="font-receipt text-3xl font-black text-white tracking-tight">
                   {brand.totalScore}
                 </div>
-                <div className="text-[10px] text-[#7A8898] uppercase tracking-wider font-medium">
+                <div className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold">
                   {brand.totalScore === 1 || brand.totalScore === -1 ? "point" : "points"}
                 </div>
               </div>
@@ -372,16 +384,16 @@ export default function ChainClient({ id }: { id: string }) {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handleOpenOrder("BOOST")}
-                  className="px-3 py-2 rounded-lg bg-[#3B7A1F] hover:bg-[#2F6318] text-white text-xs font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1 shadow-2xs"
+                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black text-xs transition-all shadow-[0_0_15px_rgba(16,185,129,0.35)] active:scale-95 cursor-pointer flex items-center gap-1.5"
                 >
-                  <span>▲</span>
+                  <span className="text-xs">▲</span>
                   <span>Boost $1</span>
                 </button>
                 <button
                   onClick={() => handleOpenOrder("SABOTAGE")}
-                  className="px-3 py-2 rounded-lg bg-[#B82E22] hover:bg-[#99251B] text-white text-xs font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1 shadow-2xs"
+                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-400 hover:to-red-500 text-white font-black text-xs transition-all shadow-[0_0_15px_rgba(244,63,94,0.35)] active:scale-95 cursor-pointer flex items-center gap-1.5"
                 >
-                  <span>▼</span>
+                  <span className="text-xs">▼</span>
                   <span>Sabotage $1</span>
                 </button>
               </div>
@@ -390,8 +402,8 @@ export default function ChainClient({ id }: { id: string }) {
 
           {/* Gap to Neighbours (Section 5.6: The single most motivating line on the page) */}
           {(gapBehindStr || gapAheadStr) && (
-            <div className="mt-4 pt-3 border-t border-[#F0F2EB] text-xs font-medium text-[#167A75]">
-              {gapBehindStr && <span>{gapBehindStr}. </span>}
+            <div className="mt-5 pt-3.5 border-t border-white/[0.08] text-xs font-semibold text-cyan-300/90 flex flex-wrap gap-2">
+              {gapBehindStr && <span>{gapBehindStr}.</span>}
               {gapAheadStr && <span>{gapAheadStr}.</span>}
             </div>
           )}
@@ -399,62 +411,62 @@ export default function ChainClient({ id }: { id: string }) {
 
         {/* Top Backer & Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="bg-[#FFFFFF] border border-[#E2E4DC] rounded-xl p-4 shadow-2xs sm:col-span-1">
-            <div className="text-[10px] text-[#7A8898] uppercase tracking-wider font-bold mb-1">
+          <div className="glass-card p-4 rounded-xl border border-white/[0.08] sm:col-span-1 space-y-1">
+            <div className="text-[10px] text-cyan-400 uppercase tracking-widest font-bold">
               Top backer
             </div>
             {brand.sloganAuthor && brand.sloganAuthor !== "Unclaimed" ? (
               <div>
-                <div className="font-bold text-sm text-[#1E2A3A]">
+                <div className="font-bold text-sm text-white">
                   {brand.sloganAuthor}
                 </div>
-                <div className="text-xs text-[#5A6878] italic mt-0.5 truncate">
+                <div className="text-xs text-slate-300 italic mt-0.5 truncate">
                   &quot;{brand.currentSlogan}&quot;
                 </div>
               </div>
             ) : (
-              <div className="text-xs text-[#7A8898] italic">
+              <div className="text-xs text-slate-400 italic">
                 No top backer yet. Boost to claim this slot.
               </div>
             )}
           </div>
 
-          <div className="bg-[#FFFFFF] border border-[#E2E4DC] rounded-xl p-4 shadow-2xs">
-            <div className="text-[10px] text-[#7A8898] uppercase tracking-wider font-bold mb-1">
+          <div className="glass-card p-4 rounded-xl border border-white/[0.08] space-y-1">
+            <div className="text-[10px] text-emerald-400 uppercase tracking-widest font-bold">
               Boosts
             </div>
-            <div className="font-receipt text-xl font-bold text-[#3B7A1F]">
+            <div className="font-receipt text-2xl font-black text-emerald-400">
               +{brand.totalBoosts}
             </div>
-            <div className="text-[11px] text-[#7A8898] mt-0.5">points gained</div>
+            <div className="text-[11px] text-slate-400">points gained</div>
           </div>
 
-          <div className="bg-[#FFFFFF] border border-[#E2E4DC] rounded-xl p-4 shadow-2xs">
-            <div className="text-[10px] text-[#7A8898] uppercase tracking-wider font-bold mb-1">
+          <div className="glass-card p-4 rounded-xl border border-white/[0.08] space-y-1">
+            <div className="text-[10px] text-rose-400 uppercase tracking-widest font-bold">
               Sabotages
             </div>
-            <div className="font-receipt text-xl font-bold text-[#B82E22]">
+            <div className="font-receipt text-2xl font-black text-rose-400">
               -{brand.totalSabotages}
             </div>
-            <div className="text-[11px] text-[#7A8898] mt-0.5">points removed</div>
+            <div className="text-[11px] text-slate-400">points removed</div>
           </div>
         </div>
 
         {/* Activity Feed */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between border-b border-[#E2E4DC] pb-2">
-            <h2 className="font-bold text-base text-[#1E2A3A]">
+        <div className="space-y-3.5">
+          <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
+            <h2 className="font-extrabold text-base text-white tracking-tight">
               Activity ({transactions.length})
             </h2>
-            <span className="text-xs text-[#7A8898]">Recent orders &amp; roasts</span>
+            <span className="text-xs text-slate-400 font-medium">Recent orders &amp; roasts</span>
           </div>
 
           {transactions.length === 0 ? (
-            <div className="text-center py-8 bg-[#FFFFFF] border border-dashed border-[#CBD2C4] rounded-lg text-xs text-[#7A8898]">
+            <div className="text-center py-10 glass-card border border-dashed border-white/10 rounded-xl text-xs text-slate-400">
               No activity for {brand.name} yet. Be the first to boost or sabotage!
             </div>
           ) : (
-            <div className="space-y-2.5">
+            <div className="space-y-3">
               {transactions.map((tx) => {
                 const isBoost = tx.actionType === "BOOST";
                 const txReplies = replies.filter((r) => r.transaction_id === tx.id);
@@ -462,28 +474,28 @@ export default function ChainClient({ id }: { id: string }) {
                 return (
                   <div
                     key={tx.id}
-                    className="bg-[#FFFFFF] border border-[#E2E4DC] rounded-lg p-3.5 space-y-2 shadow-2xs"
+                    className="glass-card rounded-xl p-4 space-y-2.5 border border-white/[0.08] hover:border-white/20 transition-all shadow-[0_4px_20px_rgba(0,0,0,0.25)]"
                   >
                     <div className="flex items-center justify-between text-xs">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-[#1E2A3A]">{tx.author}</span>
+                        <span className="font-bold text-white">{tx.author}</span>
                         <span
-                          className={`font-bold text-[11px] px-1.5 py-0.5 rounded ${
+                          className={`font-black text-[11px] px-2 py-0.5 rounded-md border ${
                             isBoost
-                              ? "bg-[#3B7A1F]/10 text-[#3B7A1F]"
-                              : "bg-[#B82E22]/10 text-[#B82E22]"
+                              ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+                              : "bg-rose-500/15 text-rose-300 border-rose-500/30"
                           }`}
                         >
                           {isBoost ? `▲ Boosted $${tx.amount}` : `▼ Sabotaged $${tx.amount}`}
                         </span>
                       </div>
-                      <span className="text-[#7A8898] text-[11px]">{tx.timestamp}</span>
+                      <span className="text-slate-400 text-[11px] font-mono">{tx.timestamp}</span>
                     </div>
 
-                    <p className="text-sm text-[#1E2A3A] italic">&quot;{tx.message}&quot;</p>
+                    <p className="text-sm text-slate-200 italic font-medium">&quot;{tx.message}&quot;</p>
 
                     {/* Voting & Reply row */}
-                    <div className="flex items-center gap-3 pt-1 text-xs text-[#5A6878]">
+                    <div className="flex items-center gap-3 pt-1 text-xs text-slate-400">
                       <button
                         onClick={async () => {
                           sound.playClick();
@@ -497,7 +509,7 @@ export default function ChainClient({ id }: { id: string }) {
                             }),
                           }).catch(() => {});
                         }}
-                        className="flex items-center gap-1 hover:text-[#3B7A1F] transition-colors cursor-pointer"
+                        className="flex items-center gap-1.5 hover:text-emerald-400 transition-colors cursor-pointer"
                       >
                         <ThumbsUp className="w-3.5 h-3.5" />
                         <span>{tx.likes || 0}</span>
@@ -516,7 +528,7 @@ export default function ChainClient({ id }: { id: string }) {
                             }),
                           }).catch(() => {});
                         }}
-                        className="flex items-center gap-1 hover:text-[#B82E22] transition-colors cursor-pointer"
+                        className="flex items-center gap-1.5 hover:text-rose-400 transition-colors cursor-pointer"
                       >
                         <ThumbsDown className="w-3.5 h-3.5" />
                         <span>{tx.dislikes || 0}</span>
@@ -530,7 +542,7 @@ export default function ChainClient({ id }: { id: string }) {
                             setReplyAuthor(`@${user.user_metadata?.user_name || "user"}`);
                           }
                         }}
-                        className="flex items-center gap-1 hover:text-[#167A75] transition-colors cursor-pointer ml-1 text-[#5A6878]"
+                        className="flex items-center gap-1.5 hover:text-cyan-300 transition-colors cursor-pointer ml-1 text-slate-400"
                       >
                         <MessageSquare className="w-3.5 h-3.5" />
                         <span>
@@ -543,13 +555,13 @@ export default function ChainClient({ id }: { id: string }) {
 
                     {/* Inline reply compose box */}
                     {replyingTo === tx.id && (
-                      <div className="mt-3 p-3 bg-[#F6F7F3] border border-[#CBD2C4] rounded-lg space-y-2">
-                        <div className="flex items-center justify-between text-xs text-[#5A6878]">
+                      <div className="mt-3 p-3.5 bg-slate-900/80 border border-white/15 rounded-xl space-y-2.5">
+                        <div className="flex items-center justify-between text-xs text-slate-300">
                           <span>
-                            Replying to <span className="font-bold text-[#1E2A3A]">{tx.author}</span>
+                            Replying to <span className="font-bold text-white">{tx.author}</span>
                           </span>
                           {user ? (
-                            <span className="font-mono text-[11px] text-[#167A75]">
+                            <span className="font-mono text-[11px] text-cyan-300 font-semibold">
                               Posting as @{user.user_metadata?.user_name || "user"}
                             </span>
                           ) : (
@@ -567,7 +579,7 @@ export default function ChainClient({ id }: { id: string }) {
                                   },
                                 });
                               }}
-                              className="text-[11px] text-[#167A75] hover:underline cursor-pointer"
+                              className="text-[11px] text-cyan-400 hover:text-cyan-300 hover:underline cursor-pointer font-medium"
                             >
                               Log in with X (optional)
                             </button>
@@ -581,7 +593,7 @@ export default function ChainClient({ id }: { id: string }) {
                             value={replyAuthor}
                             onChange={(e) => setReplyAuthor(e.target.value)}
                             maxLength={30}
-                            className="w-full bg-[#FFFFFF] border border-[#CBD2C4] rounded p-1.5 text-xs text-[#1E2A3A] placeholder-[#9AA5B1] focus:outline-none focus:border-[#167A75]"
+                            className="w-full glass-input rounded-lg p-2 text-xs text-white placeholder-slate-500 border border-white/15 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/40"
                           />
                         )}
 
@@ -592,11 +604,11 @@ export default function ChainClient({ id }: { id: string }) {
                           placeholder="Write your counter-roast or reply..."
                           value={replyText}
                           onChange={(e) => setReplyText(e.target.value)}
-                          className="w-full bg-[#FFFFFF] border border-[#CBD2C4] rounded p-2 text-xs text-[#1E2A3A] placeholder-[#9AA5B1] focus:outline-none focus:border-[#167A75] resize-none"
+                          className="w-full glass-input rounded-lg p-2.5 text-xs text-white placeholder-slate-500 border border-white/15 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/40 resize-none"
                         />
 
                         <div className="flex items-center justify-between">
-                          <span className="text-[10px] text-[#7A8898] font-mono">
+                          <span className="text-[10px] text-slate-400 font-mono">
                             {replyText.length}/140
                           </span>
                           <div className="flex items-center gap-2">
@@ -608,7 +620,7 @@ export default function ChainClient({ id }: { id: string }) {
                                 setReplyText("");
                               }}
                               disabled={isSubmittingReply}
-                              className="px-2.5 py-1 text-xs text-[#5A6878] hover:text-[#1E2A3A] cursor-pointer"
+                              className="px-2.5 py-1 text-xs text-slate-400 hover:text-white cursor-pointer"
                             >
                               Cancel
                             </button>
@@ -616,7 +628,7 @@ export default function ChainClient({ id }: { id: string }) {
                               type="button"
                               onClick={() => submitReply(tx.id)}
                               disabled={!replyText.trim() || isSubmittingReply}
-                              className="px-3 py-1 bg-[#167A75] hover:bg-[#12625E] text-white text-xs font-bold rounded shadow-2xs transition-all cursor-pointer disabled:opacity-50"
+                              className="px-3.5 py-1.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-bold rounded-lg shadow-[0_0_12px_rgba(6,182,212,0.35)] transition-all cursor-pointer disabled:opacity-50"
                             >
                               {isSubmittingReply ? "Posting..." : "Post reply"}
                             </button>
@@ -627,23 +639,23 @@ export default function ChainClient({ id }: { id: string }) {
 
                     {/* Threaded replies */}
                     {txReplies.length > 0 && (
-                      <div className="mt-2.5 pl-3 border-l-2 border-[#167A75]/30 space-y-2 text-xs text-[#5A6878]">
+                      <div className="mt-2.5 pl-3 border-l-2 border-cyan-500/40 space-y-2 text-xs text-slate-300">
                         {txReplies.map((r) => (
-                          <div key={r.id} className="py-0.5">
-                            <div className="flex items-center gap-1.5 mb-0.5">
+                          <div key={r.id} className="py-1">
+                            <div className="flex items-center gap-1.5 mb-1">
                               {r.author_avatar ? (
                                 <img
                                   src={r.author_avatar}
                                   alt={r.author_handle}
-                                  className="w-3.5 h-3.5 rounded-full object-cover"
+                                  className="w-4 h-4 rounded-full object-cover border border-white/20"
                                 />
                               ) : (
-                                <span className="w-1.5 h-1.5 rounded-full bg-[#167A75]" />
+                                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
                               )}
-                              <span className="font-bold text-[#1E2A3A] font-mono text-[11px]">
+                              <span className="font-bold text-white font-mono text-[11px]">
                                 {r.author_handle}
                               </span>
-                              <span className="text-[10px] text-[#7A8898]">
+                              <span className="text-[10px] text-slate-400">
                                 {new Date(r.created_at).toLocaleDateString("en-US", {
                                   month: "short",
                                   day: "numeric",
@@ -652,7 +664,7 @@ export default function ChainClient({ id }: { id: string }) {
                                 })}
                               </span>
                             </div>
-                            <p className="text-[#1E2A3A] pl-2">{r.message}</p>
+                            <p className="text-slate-200 pl-2 font-medium">{r.message}</p>
                           </div>
                         ))}
                       </div>

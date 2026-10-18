@@ -367,10 +367,10 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F6F7F3] text-[#1E2A3A] flex flex-col justify-between font-sans">
+    <div className="min-h-screen text-slate-100 flex flex-col justify-between font-sans">
       {/* Payment Success Notification Toast */}
       {paymentToast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-[#3B7A1F] text-white px-5 py-3 rounded-xl shadow-lg font-bold text-sm flex items-center gap-2 animate-slide-up">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 px-5 py-3 rounded-2xl shadow-[0_0_30px_rgba(16,185,129,0.5)] font-black text-sm flex items-center gap-2 animate-slide-up border border-emerald-300">
           <span>✓</span>
           <span>{paymentToast}</span>
         </div>
@@ -381,29 +381,29 @@ export default function Home() {
 
       {/* Main Content Area */}
       <main className="max-w-4xl mx-auto px-4 py-6 sm:py-8 flex-1 w-full">
-        {/* Rule Headline (Section 4.4 & 5.2) */}
+        {/* Rule Headline */}
         <div className="mb-6 text-center sm:text-left">
-          <h1 className="text-xl sm:text-2xl font-extrabold text-[#1E2A3A] tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-slate-300 tracking-tight">
             The internet&apos;s fast food ranking, settled in dollars.
           </h1>
-          <p className="text-sm sm:text-base text-[#5A6878] mt-1 font-medium">
+          <p className="text-sm sm:text-base text-slate-400 mt-1 font-medium">
             $1 pushes your chain up a point. $1 pushes a rival down one.
           </p>
 
           {/* Search Field */}
           <div className="relative mt-4 max-w-xl">
-            <Search className="w-4 h-4 text-[#7A8898] absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Find your chain (e.g. McDonald's, Taco Bell, Wendy's)..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#FFFFFF] border border-[#CBD2C4] rounded-lg pl-10 pr-4 py-2.5 text-sm text-[#1E2A3A] placeholder-[#9AA5B1] focus:outline-none focus:border-[#167A75] focus:ring-1 focus:ring-[#167A75] shadow-2xs"
+              className="w-full bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 shadow-[0_4px_20px_rgba(0,0,0,0.3)] transition-all"
             />
           </div>
         </div>
 
-        {/* #1 Marquee Sign (Section 4.4) - Amber Sign */}
+        {/* #1 Marquee Sign - Amber Glass Sign */}
         {!searchQuery && selectedCuisine === "All" && (
           <NumberOneSign
             leader={leaderChain}
@@ -412,7 +412,7 @@ export default function Home() {
           />
         )}
 
-        {/* Cuisine Filter Chips (Section 5.2) */}
+        {/* Cuisine Filter Chips */}
         <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-2 mb-4 scrollbar-none">
           {CUISINE_TAGS.map((tag) => (
             <button
@@ -421,10 +421,10 @@ export default function Home() {
                 sound.playClick();
                 setSelectedCuisine(tag);
               }}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors cursor-pointer border ${
+              className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer border ${
                 selectedCuisine === tag
-                  ? "bg-[#1E2A3A] text-white border-[#1E2A3A]"
-                  : "bg-[#FFFFFF] text-[#5A6878] border-[#E2E4DC] hover:border-[#CBD2C4] hover:text-[#1E2A3A]"
+                  ? "bg-gradient-to-r from-cyan-500 to-teal-400 text-slate-950 border-cyan-400/50 shadow-[0_0_15px_rgba(6,182,212,0.35)]"
+                  : "bg-white/[0.05] backdrop-blur-md text-slate-300 border-white/10 hover:border-white/20 hover:text-white hover:bg-white/10"
               }`}
             >
               {tag}
@@ -451,8 +451,8 @@ export default function Home() {
           })}
 
           {filteredBrands.length === 0 && (
-            <div className="text-center py-12 bg-[#FFFFFF] border border-dashed border-[#CBD2C4] rounded-lg">
-              <p className="text-[#5A6878] text-sm">
+            <div className="text-center py-12 bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-2xl shadow-xl">
+              <p className="text-slate-400 text-sm">
                 No restaurant found matching &quot;{searchQuery}&quot;.
               </p>
               <button
@@ -460,7 +460,7 @@ export default function Home() {
                   sound.playClick();
                   setIsAddChainOpen(true);
                 }}
-                className="mt-3 text-xs font-bold text-[#167A75] hover:underline cursor-pointer"
+                className="mt-3 text-xs font-bold text-cyan-400 hover:text-cyan-300 hover:underline cursor-pointer"
               >
                 Missing a chain? Suggest one
               </button>
@@ -468,23 +468,23 @@ export default function Home() {
           )}
         </div>
 
-        {/* Suggest Chain Action (Bottom of list per Section 4.4 & F11) */}
+        {/* Suggest Chain Action */}
         {filteredBrands.length > 0 && (
-          <div className="mt-4 text-center py-3 text-xs sm:text-sm text-[#5A6878]">
+          <div className="mt-4 text-center py-3 text-xs sm:text-sm text-slate-400">
             Missing a chain?{" "}
             <button
               onClick={() => {
                 sound.playClick();
                 setIsAddChainOpen(true);
               }}
-              className="text-[#167A75] font-bold hover:underline cursor-pointer ml-0.5"
+              className="text-cyan-400 font-bold hover:text-cyan-300 hover:underline cursor-pointer ml-0.5"
             >
               Suggest one
             </button>
           </div>
         )}
 
-        {/* Live Activity Feed (Section 4.4 & 5.2 - Real data only) */}
+        {/* Live Activity Feed */}
         <LiveTicker transactions={transactions} />
       </main>
 

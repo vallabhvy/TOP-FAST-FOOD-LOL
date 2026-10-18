@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import { X, Share2, Copy, Check } from "lucide-react";
 import { Transaction } from "@/types";
 import { sound } from "@/lib/sound";
-import { supabase } from "@/lib/supabase";
 
 interface ReceiptModalProps {
   transaction: Transaction | null;
@@ -46,7 +45,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
 
   const receiptPlain = `
 TOPFASTFOOD.LOL
-drive-thru window #1
+TRANSACTION RECEIPT
 ------------------------------
 ORDER #${transaction.receiptNumber}
 ${dateStr}  ${timeStr}
@@ -63,7 +62,7 @@ ${transaction.brandName.toUpperCase()}  now #${brandRank}
 ${transaction.brandName} fan? Fight back:
 topfastfood.lol/chain/${transaction.brandId}
 ------------------------------
-THANK YOU. COME AGAIN.
+SETTLED ON TOPFASTFOOD.LOL
 `.trim();
 
   const handleCopy = () => {
@@ -73,92 +72,85 @@ THANK YOU. COME AGAIN.
     setTimeout(() => setCopied(false), 2500);
   };
 
-  const handleTwitterLogin = async () => {
-    if (!supabase) return;
-    await supabase.auth.signInWithOAuth({
-      provider: "x" as any,
-    });
-  };
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-150">
       <div className="relative w-full max-w-sm sm:max-w-md">
-        {/* Receipt Container */}
-        <div className="bg-[#FFFFFF] border border-[#CBD2C4] shadow-2xl rounded-sm p-6 sm:p-7 font-receipt text-[#1E2A3A] relative">
+        {/* Modern Glass Receipt Container */}
+        <div className="bg-slate-900/95 backdrop-blur-2xl border border-white/15 shadow-[0_20px_70px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.2)] rounded-2xl p-6 sm:p-7 font-receipt text-slate-100 relative">
           <button
             onClick={() => {
               sound.playClick();
               onClose();
             }}
-            className="absolute top-3 right-3 text-[#7A8898] hover:text-[#1E2A3A] cursor-pointer p-1"
+            className="absolute top-4 right-4 text-slate-400 hover:text-white cursor-pointer p-1 rounded-lg hover:bg-white/10 transition-colors"
             title="Close"
           >
             <X className="w-5 h-5" />
           </button>
 
           {/* Receipt Top */}
-          <div className="text-center pb-3 border-b border-dashed border-[#B8BCB2]">
-            <div className="font-extrabold text-xl tracking-tight uppercase">
+          <div className="text-center pb-3 border-b border-dashed border-white/15">
+            <div className="font-black text-xl tracking-tight uppercase text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-teal-200 to-emerald-300">
               TOPFASTFOOD.LOL
             </div>
-            <div className="text-xs text-[#5A6878] uppercase mt-0.5">
-              drive-thru window #1
+            <div className="text-xs text-slate-400 uppercase tracking-wider mt-0.5 font-sans">
+              Digital Verified Receipt
             </div>
           </div>
 
           {/* Receipt Meta */}
-          <div className="py-3 border-b border-dashed border-[#B8BCB2] text-xs space-y-1">
+          <div className="py-3 border-b border-dashed border-white/15 text-xs space-y-1">
             <div className="flex justify-between">
-              <span className="text-[#5A6878]">ORDER</span>
-              <span className="font-bold">#{transaction.receiptNumber}</span>
+              <span className="text-slate-400">ORDER</span>
+              <span className="font-bold text-white">#{transaction.receiptNumber}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-[#5A6878]">{dateStr}</span>
-              <span>{timeStr}</span>
+              <span className="text-slate-400">{dateStr}</span>
+              <span className="text-slate-300">{timeStr}</span>
             </div>
           </div>
 
           {/* Transaction Summary */}
-          <div className="py-3 border-b border-dashed border-[#B8BCB2] text-xs space-y-2">
+          <div className="py-3 border-b border-dashed border-white/15 text-xs space-y-2">
             <div className="flex justify-between font-bold text-sm">
-              <span className={isBoost ? "text-[#3B7A1F]" : "text-[#B82E22]"}>
+              <span className={isBoost ? "text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.5)]"}>
                 {isBoost ? "▲ BOOST" : "▼ SABOTAGE"} {transaction.brandName.toUpperCase()}
               </span>
-              <span>${transaction.amount}.00</span>
+              <span className="text-white">${transaction.amount}.00</span>
             </div>
-            <div className="flex justify-between text-[#5A6878]">
+            <div className="flex justify-between text-slate-400">
               <span>POINTS</span>
-              <span className="font-bold text-[#1E2A3A]">
+              <span className="font-bold text-white">
                 {isBoost ? `+${transaction.amount}` : `-${transaction.amount}`}
               </span>
             </div>
-            <div className="flex justify-between text-[#5A6878]">
+            <div className="flex justify-between text-slate-400">
               <span>CURRENT RANK</span>
-              <span className="font-bold text-[#1E2A3A]">#{brandRank}</span>
+              <span className="font-bold text-cyan-300">#{brandRank}</span>
             </div>
           </div>
 
           {/* Note / Message */}
-          <div className="py-3 border-b border-dashed border-[#B8BCB2] text-xs">
-            <div className="italic font-serif text-sm text-[#1E2A3A] mb-1">
+          <div className="py-3 border-b border-dashed border-white/15 text-xs">
+            <div className="italic text-sm text-slate-200 mb-1">
               &quot;{transaction.message}&quot;
             </div>
-            <div className="text-right text-[#5A6878] font-mono">
+            <div className="text-right text-slate-400 font-mono">
               — {transaction.author}
             </div>
           </div>
 
           {/* Call to Action for Rivals */}
-          <div className="py-3 border-b border-dashed border-[#B8BCB2] text-center text-xs text-[#5A6878]">
+          <div className="py-3 border-b border-dashed border-white/15 text-center text-xs text-slate-400">
             <div>{transaction.brandName} fan? Fight back:</div>
-            <div className="font-bold text-[#167A75] mt-0.5">
+            <div className="font-bold text-cyan-400 mt-0.5">
               topfastfood.lol/chain/{transaction.brandId}
             </div>
           </div>
 
           {/* Receipt Footer */}
-          <div className="text-center pt-3 text-xs tracking-wider font-bold text-[#5A6878] uppercase">
-            THANK YOU. COME AGAIN.
+          <div className="text-center pt-3 text-xs tracking-wider font-bold text-slate-400 uppercase">
+            SETTLED IN DOLLARS • THANK YOU
           </div>
 
           {/* Action Buttons */}
@@ -169,7 +161,7 @@ THANK YOU. COME AGAIN.
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => sound.playClick()}
-                className="py-2 px-3 rounded-lg bg-[#1E2A3A] hover:bg-[#167A75] text-white text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer text-center"
+                className="py-2.5 px-3 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 hover:from-cyan-400 hover:to-teal-300 text-slate-950 text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center shadow-[0_0_15px_rgba(6,182,212,0.35)]"
               >
                 <Share2 className="w-3.5 h-3.5" />
                 <span>Share to X</span>
@@ -177,9 +169,9 @@ THANK YOU. COME AGAIN.
 
               <button
                 onClick={handleCopy}
-                className="py-2 px-3 rounded-lg border border-[#CBD2C4] hover:bg-[#EEF0EA] text-[#1E2A3A] text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                className="py-2.5 px-3 rounded-xl border border-white/15 bg-white/[0.06] hover:bg-white/[0.12] text-white text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                {copied ? <Check className="w-3.5 h-3.5 text-[#3B7A1F]" /> : <Copy className="w-3.5 h-3.5" />}
+                {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                 <span>{copied ? "Copied" : "Copy text"}</span>
               </button>
             </div>
@@ -189,7 +181,7 @@ THANK YOU. COME AGAIN.
                 sound.playClick();
                 onClose();
               }}
-              className="w-full py-2 rounded-lg bg-[#EEF0EA] hover:bg-[#E2E4DC] text-[#1E2A3A] text-xs font-bold transition-colors cursor-pointer"
+              className="w-full py-2.5 rounded-xl bg-white/[0.05] hover:bg-white/10 text-slate-300 text-xs font-bold transition-colors cursor-pointer border border-white/10"
             >
               Done
             </button>

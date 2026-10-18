@@ -1,22 +1,31 @@
 @import "tailwindcss";
 
 :root {
-  --bg-thermal: #F6F7F3;
-  --ink-receipt: #1E2A3A;
-  --teal-drivein: #167A75;
-  --pickle-green: #3B7A1F;
-  --hotsauce-red: #B82E22;
-  --marquee-amber: #FFB000;
-  --paper-border: #E2E4DC;
-  --paper-card: #FFFFFF;
-  --paper-subtle: #EEF0EA;
+  --bg-dark: #0A0E1A;
+  --bg-slate: #0F172A;
+  --glass-bg: rgba(15, 23, 42, 0.7);
+  --glass-bg-subtle: rgba(255, 255, 255, 0.05);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-highlight: rgba(255, 255, 255, 0.25);
+  --color-boost: #10B981;
+  --color-sabotage: #F43F5E;
+  --color-champion: #F59E0B;
+  --color-cyan: #06B6D4;
+  --color-purple: #8B5CF6;
 }
 
 body {
-  background-color: #F6F7F3;
-  color: #1E2A3A;
+  background-color: #0A0E1A;
+  background-image: 
+    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(139, 92, 246, 0.22), transparent 70%),
+    radial-gradient(circle 600px at 85% 25%, rgba(6, 182, 212, 0.15), transparent 60%),
+    radial-gradient(circle 500px at 15% 55%, rgba(16, 185, 129, 0.12), transparent 60%),
+    radial-gradient(circle 600px at 70% 85%, rgba(244, 63, 94, 0.12), transparent 60%);
+  background-attachment: fixed;
+  color: #F8FAFC;
   font-family: var(--font-archivo), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   overflow-x: hidden;
+  min-height: 100vh;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -25,27 +34,84 @@ body {
   font-family: var(--font-mono), monospace;
 }
 
-/* Thermal paper texture & receipt styling */
-.thermal-receipt {
-  background-color: #FFFFFF;
-  border: 1px dashed #B8BCB2;
-  box-shadow: 0 4px 16px rgba(30, 42, 58, 0.06);
+/* Glassmorphism utility classes */
+.glass-panel {
+  background: rgba(15, 23, 42, 0.72);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 10px 35px -5px rgba(0, 0, 0, 0.4), inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
 }
 
-/* Clean drive-in custom scrollbar */
+.glass-card {
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 30px 0 rgba(0, 0, 0, 0.35), inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-card:hover {
+  background: rgba(30, 41, 59, 0.75);
+  border-color: rgba(255, 255, 255, 0.24);
+  transform: translateY(-2px);
+  box-shadow: 0 14px 40px -8px rgba(0, 0, 0, 0.55), inset 0 1px 0 0 rgba(255, 255, 255, 0.25);
+}
+
+.glass-pill {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.glass-input {
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #F8FAFC;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.glass-input:focus {
+  border-color: #06B6D4;
+  box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.25), inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Luminous Glow Accents */
+.glow-emerald {
+  box-shadow: 0 0 25px -4px rgba(16, 185, 129, 0.45);
+}
+
+.glow-rose {
+  box-shadow: 0 0 25px -4px rgba(244, 63, 94, 0.45);
+}
+
+.glow-amber {
+  box-shadow: 0 0 35px -5px rgba(245, 158, 11, 0.45);
+}
+
+.glow-cyan {
+  box-shadow: 0 0 25px -4px rgba(6, 182, 212, 0.45);
+}
+
+/* Custom modern scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
 }
 ::-webkit-scrollbar-track {
-  background: #F6F7F3;
+  background: rgba(10, 14, 26, 0.8);
 }
 ::-webkit-scrollbar-thumb {
-  background: #CBD2C4;
-  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #167A75;
+  background: rgba(6, 182, 212, 0.6);
 }
 
 /* Toast animation */

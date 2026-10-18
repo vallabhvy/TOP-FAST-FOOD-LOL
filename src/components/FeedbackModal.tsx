@@ -123,12 +123,12 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-      <div className="bg-[#FFFFFF] border border-[#E2E4DC] rounded-xl max-w-lg w-full p-5 sm:p-6 text-[#1E2A3A] shadow-xl relative overflow-hidden font-sans">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-150">
+      <div className="bg-slate-900/95 backdrop-blur-2xl border border-white/15 rounded-2xl max-w-lg w-full p-5 sm:p-6 text-slate-100 shadow-[0_20px_60px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.2)] relative overflow-hidden font-sans">
         {/* Close Button */}
         <button
           onClick={handleResetAndClose}
-          className="absolute top-4 right-4 p-1 text-[#7A8898] hover:text-[#1E2A3A] transition-colors cursor-pointer"
+          className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
           aria-label="Close"
         >
           <X className="w-5 h-5" />
@@ -137,15 +137,15 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
         {isSuccess ? (
           /* Success Screen */
           <div className="py-6 text-center space-y-4">
-            <div className="w-12 h-12 rounded-full bg-[#3B7A1F]/10 border border-[#3B7A1F] text-[#3B7A1F] flex items-center justify-center mx-auto">
-              <CheckCircle2 className="w-7 h-7" />
+            <div className="w-14 h-14 rounded-full bg-emerald-500/20 border border-emerald-400 text-emerald-400 flex items-center justify-center mx-auto shadow-[0_0_25px_rgba(16,185,129,0.4)]">
+              <CheckCircle2 className="w-8 h-8" />
             </div>
 
             <div className="space-y-1">
-              <h3 className="text-xl font-bold text-[#1E2A3A]">
+              <h3 className="text-xl font-black text-white">
                 Feedback received
               </h3>
-              <p className="text-sm text-[#5A6878] max-w-sm mx-auto">
+              <p className="text-sm text-slate-300 max-w-sm mx-auto">
                 Thank you. Your message was sent directly to Vallabh (@vallabh_vy).
               </p>
             </div>
@@ -153,7 +153,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
             <div className="pt-2">
               <button
                 onClick={handleResetAndClose}
-                className="w-full py-2.5 rounded-lg bg-[#167A75] hover:bg-[#12625E] text-white font-bold text-sm transition-all cursor-pointer"
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black text-sm shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all cursor-pointer"
               >
                 Back to ranking
               </button>
@@ -163,10 +163,10 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
           /* Feedback Form */
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <h2 className="text-lg font-bold text-[#1E2A3A]">
+              <h2 className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-slate-300">
                 Send feedback
               </h2>
-              <p className="text-xs text-[#5A6878] mt-0.5">
+              <p className="text-xs text-slate-400 mt-1">
                 Have an idea, found a bug, or want a new chain added? Let the creator know.
               </p>
             </div>
@@ -176,10 +176,10 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
               <button
                 type="button"
                 onClick={() => setFeedbackType("feature")}
-                className={`p-2 rounded-lg border text-xs font-medium flex flex-col items-center gap-1 transition-all cursor-pointer ${
+                className={`p-2.5 rounded-xl border text-xs font-semibold flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
                   feedbackType === "feature"
-                    ? "border-[#167A75] bg-[#167A75]/10 text-[#167A75] font-bold"
-                    : "border-[#E2E4DC] hover:bg-[#EEF0EA] text-[#5A6878]"
+                    ? "border-cyan-400 bg-cyan-500/20 text-cyan-300 font-bold shadow-[0_0_15px_rgba(6,182,212,0.3)]"
+                    : "border-white/10 bg-white/[0.04] hover:bg-white/[0.08] text-slate-400"
                 }`}
               >
                 <Lightbulb className="w-4 h-4" />
@@ -188,10 +188,10 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
               <button
                 type="button"
                 onClick={() => setFeedbackType("bug")}
-                className={`p-2 rounded-lg border text-xs font-medium flex flex-col items-center gap-1 transition-all cursor-pointer ${
+                className={`p-2.5 rounded-xl border text-xs font-semibold flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
                   feedbackType === "bug"
-                    ? "border-[#B82E22] bg-[#B82E22]/10 text-[#B82E22] font-bold"
-                    : "border-[#E2E4DC] hover:bg-[#EEF0EA] text-[#5A6878]"
+                    ? "border-rose-400 bg-rose-500/20 text-rose-300 font-bold shadow-[0_0_15px_rgba(244,63,94,0.3)]"
+                    : "border-white/10 bg-white/[0.04] hover:bg-white/[0.08] text-slate-400"
                 }`}
               >
                 <Bug className="w-4 h-4" />
@@ -200,10 +200,10 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
               <button
                 type="button"
                 onClick={() => setFeedbackType("feedback")}
-                className={`p-2 rounded-lg border text-xs font-medium flex flex-col items-center gap-1 transition-all cursor-pointer ${
+                className={`p-2.5 rounded-xl border text-xs font-semibold flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
                   feedbackType === "feedback"
-                    ? "border-[#1E2A3A] bg-[#EEF0EA] text-[#1E2A3A] font-bold"
-                    : "border-[#E2E4DC] hover:bg-[#EEF0EA] text-[#5A6878]"
+                    ? "border-amber-400 bg-amber-500/20 text-amber-300 font-bold shadow-[0_0_15px_rgba(245,158,11,0.3)]"
+                    : "border-white/10 bg-white/[0.04] hover:bg-white/[0.08] text-slate-400"
                 }`}
               >
                 <MessageSquare className="w-4 h-4" />
@@ -212,14 +212,14 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
             </div>
 
             {errorMessage && (
-              <div className="p-2.5 rounded-lg bg-[#B82E22]/10 border border-[#B82E22]/30 flex items-center gap-2 text-xs text-[#B82E22]">
+              <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center gap-2 text-xs text-rose-300">
                 <AlertTriangle className="w-4 h-4 flex-shrink-0" />
                 <span>{errorMessage}</span>
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-[#5A6878] mb-1">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
                 Your message
               </label>
               <textarea
@@ -228,13 +228,13 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
                 placeholder="What's on your mind?"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                className="w-full bg-[#FFFFFF] border border-[#CBD2C4] rounded-lg p-2.5 text-sm text-[#1E2A3A] placeholder-[#9AA5B1] focus:outline-none focus:border-[#167A75] focus:ring-1 focus:ring-[#167A75]"
+                className="w-full bg-slate-950/60 border border-white/15 rounded-xl p-3 text-sm text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400"
               />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-[#5A6878] mb-1">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
                   Name / @handle (optional)
                 </label>
                 <input
@@ -242,12 +242,12 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
                   placeholder="@yourhandle"
                   value={author}
                   onChange={(e) => setAuthor(e.target.value)}
-                  className="w-full bg-[#FFFFFF] border border-[#CBD2C4] rounded-lg p-2 text-sm text-[#1E2A3A] placeholder-[#9AA5B1] focus:outline-none focus:border-[#167A75]"
+                  className="w-full bg-slate-950/60 border border-white/15 rounded-xl p-2.5 text-sm text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-[#5A6878] mb-1">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
                   Email (optional)
                 </label>
                 <input
@@ -255,7 +255,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
                   placeholder="For a reply"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-[#FFFFFF] border border-[#CBD2C4] rounded-lg p-2 text-sm text-[#1E2A3A] placeholder-[#9AA5B1] focus:outline-none focus:border-[#167A75]"
+                  className="w-full bg-slate-950/60 border border-white/15 rounded-xl p-2.5 text-sm text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400"
                 />
               </div>
             </div>
@@ -264,7 +264,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full py-2.5 rounded-lg bg-[#167A75] hover:bg-[#12625E] text-white font-bold text-sm shadow-sm transition-all cursor-pointer disabled:opacity-50"
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 hover:from-cyan-400 hover:to-teal-300 text-slate-950 font-black text-sm shadow-[0_0_20px_rgba(6,182,212,0.4)] transition-all cursor-pointer disabled:opacity-50"
               >
                 {isSubmitting ? "Sending..." : "Send feedback"}
               </button>

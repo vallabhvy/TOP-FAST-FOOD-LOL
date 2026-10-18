@@ -32,7 +32,7 @@ export const LegalTabs: React.FC<LegalTabsProps> = ({ activeTab }) => {
   ];
 
   return (
-    <div className="flex flex-wrap items-center gap-2 p-1 bg-[#FFFFFF] border border-[#E2E4DC] rounded-lg mb-6">
+    <div className="flex flex-wrap items-center gap-2 p-1.5 glass-panel rounded-2xl mb-6 border border-white/10">
       {tabs.map((tab) => {
         const isActive = activeTab === tab.id;
         const Icon = tab.icon;
@@ -41,13 +41,13 @@ export const LegalTabs: React.FC<LegalTabsProps> = ({ activeTab }) => {
             key={tab.id}
             href={tab.href}
             onClick={() => sound.playClick()}
-            className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-md text-xs font-medium transition-all cursor-pointer border ${
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer border ${
               isActive
-                ? "bg-[#1E2A3A] text-white border-[#1E2A3A] font-bold"
-                : "bg-transparent text-[#5A6878] hover:text-[#1E2A3A] border-transparent hover:bg-[#EEF0EA]"
+                ? "bg-cyan-500/20 text-cyan-300 border-cyan-400/40 shadow-[0_0_12px_rgba(6,182,212,0.25)] font-bold"
+                : "bg-white/[0.02] text-slate-400 hover:text-white border-transparent hover:border-white/10 hover:bg-white/[0.06]"
             }`}
           >
-            <Icon className="w-3.5 h-3.5" />
+            <Icon className={`w-3.5 h-3.5 ${isActive ? "text-cyan-400" : "text-slate-400"}`} />
             <span>{tab.label}</span>
           </Link>
         );
